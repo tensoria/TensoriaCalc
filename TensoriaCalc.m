@@ -1172,7 +1172,7 @@ idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
 (* extract inverse metric as a matrix *)
 invmetricM=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]];
 (* return Tensor *)
-output=invmetricM.(D[stuff,#]&/@coords);
+output=invmetricM . (D[stuff,#]&/@coords);
 Tensor[
 TensorType->"Gradient",
 TensorName->Del[stuff],
@@ -1196,7 +1196,7 @@ contents=TensorComponents[stuff];
 (* extract inverse metric as a matrix *)
 invmetricM=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]];
 (* return Tensor *)
-output=invmetricM.(D[contents,#]&/@coords);
+output=invmetricM . (D[contents,#]&/@coords);
 Tensor[
 TensorType->"Gradient",
 TensorName->Del[Cases[stuff,(TensorName->ii_)->ii,\[Infinity]][[1]]],
@@ -1359,7 +1359,7 @@ Sum[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]D[stuff,coords[[\[Nu]-idx+1]]],
 (* \[PartialD]_\[Mu] stuff *)
 gradd=Table[D[stuff,coords[[\[Nu]-idx+1]]],{\[Nu],idx,idx+lgth-1}];
 (* \[PartialD]_\[Mu] stuff g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] stuff = gradd.gradu *)
-gradu.gradd
+gradu . gradd
 ]
 
 
@@ -1629,7 +1629,7 @@ TensorName ->"\!\(\*
 StyleBox[\"P\",\nFontSlant->\"Italic\"]\)",
 Indices->{SuperMinus[\[Alpha]],SuperMinus[\[Beta]],SuperMinus[\[Gamma]]},
 StartIndex->si,
-TensorComponents->Opr[((gsgn \[Rho]0'[(1/2)gsgn TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]]])/.MHDRules)]TensorComponents[q123[SuperMinus[\[Alpha]1],SuperMinus[\[Beta]1],SuperMinus[\[Gamma]1]]],
+TensorComponents->Opr[((gsgn \[Rho]0'[(1/2)gsgn TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]]])/.MHDRules)]TensorComponents[q123[SuperMinus[\[Alpha]1],SuperMinus[\[Beta]1],SuperMinus[\[Gamma]1]]],
 CoordinateSystem->coords];
 \[Rho]0q123[\[Alpha]_,\[Beta]_,\[Gamma]_]:=MoveIndices[\[Rho]0q123T[\[Alpha]1,\[Alpha]2,\[Alpha]3],{\[Alpha],\[Beta],\[Gamma]},UniqueIndices[gBH]];
 PT[\[Beta]_,\[Gamma]_]=Tensor[
@@ -1642,7 +1642,7 @@ TensorComponents->TensorComponents[CovariantD[SubMinus[\[Sigma]],\[Rho]0q123[Sup
 CoordinateSystem->coords];
 P[\[Beta]_,\[Gamma]_]:=MoveIndices[Opr[PT[\[Alpha]1,\[Alpha]2]],{\[Beta],\[Gamma]},UniqueIndices[gBH]];
 (* perfect fluid stress tensor of plasma *)
-F2=Opr[TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]]];
+F2=Opr[TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]]];
 F2=(gsgn TensorComponents[Metric[SuperMinus[\[Alpha]],SuperMinus[\[Beta]],UniqueIndices[gBH]]](\[Rho]0[gsgn F2/2]-\[Rho]0'[gsgn F2/2]gsgn F2)+\[Rho]0'[gsgn F2/2]TensorProduct[TensorComponents[n[SuperMinus[\[Mu]]]],TensorComponents[n[SuperMinus[\[Nu]]]]])/.MHDRules;
 PlasmaT[\[Sigma]_,\[Rho]_]=Tensor[
 TensorType->"MHDPlasma",
@@ -1676,13 +1676,13 @@ divF[\[Rho]_]:=MoveIndices[divFT[\[Alpha]],{\[Rho]},UniqueIndices[gBH]];
 \*SubscriptBox[\(\[Del]\), \(\[Sigma]\)]\[Zeta]\) \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]
 \*SuperscriptBox[\(F\), \(\[Mu]\[Sigma]\)]\) = Subscript[q1, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
-LHS1=((TensorComponents[q1[SubMinus[\[Sigma]]]].TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr);
+LHS1=((TensorComponents[q1[SubMinus[\[Sigma]]]] . TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr);
 RHS1=Opr[TensorContract[TensorProduct[TensorComponents[q1[SubMinus[\[Sigma]]]],TensorComponents[q3[SubMinus[\[Sigma]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
 (* EOM II : \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Sigma]\)]Y\) \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]
 \*SuperscriptBox[\(F\), \(\[Mu]\[Sigma]\)]\) = Subscript[q2, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
-LHS2=(TensorComponents[q2[SubMinus[\[Sigma]]]].TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr;
+LHS2=(TensorComponents[q2[SubMinus[\[Sigma]]]] . TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr;
 RHS2=Opr[TensorContract[TensorProduct[TensorComponents[q2[SubMinus[\[Sigma]]]],TensorComponents[q3[SubMinus[\[Sigma]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
 (* EOM III : 0 = Subscript[q2, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
 RHS3=Opr[TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[\[Sigma]],SubMinus[\[Rho]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
@@ -1707,7 +1707,7 @@ MHDPlasmaStressTensor->(PlasmaT[Unique[\[Sigma]],Unique[\[Rho]]]),
 MHDTotalStressTensor->TotalT[Unique[\[Sigma]],Unique[\[Rho]]],
 MHDPlasmaEnergyDensityOperator->rho,
 (* MHD Lagrangian -\[Rho]0-(1/4)F^2 *)
-MHDLagrangianDensity->-(\[Rho]0[(1/2)gsgn (TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]])//Opr]/.MHDRules)-(1/4)TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[Unique[\[Sigma]]],SubMinus[Unique[\[Rho]]]]],TensorComponents[F\[Mu]\[Nu][SuperMinus[Unique[\[Sigma]]],SuperMinus[Unique[\[Rho]]]]]],{{1,3},{2,4}}],
+MHDLagrangianDensity->-(\[Rho]0[(1/2)gsgn (TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]])//Opr]/.MHDRules)-(1/4)TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[Unique[\[Sigma]]],SubMinus[Unique[\[Rho]]]]],TensorComponents[F\[Mu]\[Nu][SuperMinus[Unique[\[Sigma]]],SuperMinus[Unique[\[Rho]]]]]],{{1,3},{2,4}}],
 (* store metric info too *)
 MHDMetricTensor->UniqueIndices[gBH],
 CoordinateSystem->Coordinates[UniqueIndices[gBH]],
