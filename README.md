@@ -7,7 +7,7 @@ During the 2010's, TensoriaCalc was first developed by Yi-Zen Chu as a computati
 
 Please do feel free to use and/or modify this code, but only for the purposes of education or scientific research. If you do so, please cite the URLs of this GitHub webpage and Yi-Zen Chu's TensoriaCalc page (http://www.stargazing.net/yizen/Tensoria.html) in your publication(s). 
 
-Comments, suggestions, bug reports, etc. are most welcomed too.
+Comments, suggestions, bug reports, etc. are most welcomed too. Write to tensoria [dot] wolfram [at] gmail or yizen [dot] chu [at] gmail.
 
 # What to download?
 Mathematica packages are .m files. Hence, to run TensoriaCalc, simply download the TensoriaCalc.m file to the desired directory; and load it into your Mathematica session. 
