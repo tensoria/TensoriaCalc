@@ -3,7 +3,7 @@ This page hosts the Mathematica package TensoriaCalc, which tackles concrete (se
 
 One key feature of TensoriaCalc is its smooth consistency with the Wolfram Language itself. Provided one is already familiar with the latter, this leads to its ease of use. For example, a geometry is defined by entering the metric (or its inverse) by simply feeding the function Metric a List of coordinates used, and either the usual quadratic form of coordinate differentials (or, partial derivatives) or a square matrix representing the (inverse) metric components themselves. There is no overhead spent in "declaring" space(time) indices. Multiple geometries can be defined without conflict.
 
-During the 2010's, TensoriaCalc was first developed by Yi-Zen Chu as a computational tool for his research. In the first half of the 2020's, Wei-Hao Chen -- for his Master's thesis project -- joined the effort and extended its functionality considerably. During this time, Vaidehi Varma worked with both of us to carefully document the code and write its manual.
+During the 2010's, TensoriaCalc was first developed by Yi-Zen Chu as a computational tool for his research. In the first half of the 2020's, Wei-Hao Chen -- for his Master's thesis project -- joined the effort and extended its functionality considerably. During this time, Vaidehi Varma worked with both of them to carefully document the code and write its manual.
 
 Please do feel free to use and/or modify this code, but only for the purposes of education or scientific research. If you do so, please cite the URLs of this GitHub webpage and Yi-Zen Chu's TensoriaCalc page (http://www.stargazing.net/yizen/Tensoria.html) in your publication(s). 
 
