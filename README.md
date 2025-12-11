@@ -14,4 +14,6 @@ Mathematica packages are .m files. Hence, to run TensoriaCalc, simply download t
 
 On the other hand, the TensoriaCalc.nb file offers a more reader-friendly form of the code. To convert it into a .m file; first download it to the desired directory; Open it in Mathematica; then Save the file. This will create a TensoriaCalc.m file which can be loaded directly from any Mathematica session.
 
+To get started in TensoriaCalc, consider working through TensoriaCalc_UserGuide.nb. It studies multi-variable calculus and various fundamental physics problems involving flat and curved space(time)s -- with a heavy emphasis on symmetry principles -- using TensoriaCalc's computational tools. This provides a hands-on introduction to the main features of TensoriaCalc.
+
 The TensoriaCalc manual shall appear soon.
