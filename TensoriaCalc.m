@@ -20,23 +20,24 @@
 
 
 (* ::Input::Initialization:: *)
-(* ============================================== *)
-(*            Copyright Yi-Zen Chu.               *)
-(* ============================================== *)
+(* ========================================== *)
+(* Copyright Wei-Hao Chen and Yi-Zen Chu          *)
+(* ========================================== *)
 (* One main goal of this software is the          *)
 (* computation of Christoffel symbols, Riemann,   *)
 (* Ricci tensor and scalar, etc. given a specific *)
 (* metric. We are working within a Riemannian     *)
 (* geometry frameowork. Explicit tensorial        *)
 (* calculations will increasingly be supported.   *)
-(* ============================================== *)
+(* ========================================== *)
 (* Please feel free to use and/or modify this     *)
-(* code for the purposes of scientific research.  *)
+(* code for the purposes of scientific research   *)
+(* but do not use it for commerical purposes      *)
+(* without our permission.                        *)
 (* Please cite the URL below in your publications *)
 (* if you do use this code for your research.     *)
-(* If you want to make money off this, write to   *)
-(* me first at yizen[dot]chu[at]gmail[dot]com.    *)
-(* Feel free to send comments to the same e-mail. *)
+(* Feel free to send comments to yizen [dot] chu  *)
+(* [at] gmail [dot] com.                          *)
 (* This software, a user's guide, and future      *)
 (* updates/revisions should be available at       *)
 (* http://www.stargazing.net/yizen/Tensoria.html  *)
@@ -60,80 +61,663 @@ BeginPackage["TensoriaCalc`"];
 
 
 (* ::Input::Initialization:: *)
-(* Usage allows us to say which functions will be `public' *)
-Tensor::usage="Tensor is the generic Head of all tensorial objects.";
-TensorType::usage="TensorType specifies the type of Tensor.";
-TensorName::usage="TensorName specifies the name of Tensor.";
-Indices::usage="(I) Indices \[Rule] {\[Mu],\[Nu],...} is one of the arguments of Tensor. It defines the indices of the Tensor. An upper index carries a superscript '-' and a lower index a subscript '-'. For example \!\(\*SuperscriptBox[\(\[Alpha]\), \(-\)]\) (also equivalent to SuperMinus[\[Alpha]]) is an upper index and \!\(\*SubscriptBox[\(\[Alpha]\), \(-\)]\) (also equivalent to SubMinus[\[Alpha]]) is a lower index. (II) Indices[M_Tensor] takes in a Tensor and returns a List of the indices used.";
-Metric::usage="(\!\(\*
-StyleBox[\"I\",\nFontColor->RGBColor[0, 0, 1]]\)) Metric[\[Mu],\[Nu],M,CoordinateSystem\[Rule]coords_List,TensorName\[Rule]name,StartIndex\[Rule]i,ChristoffelOperator\[Rule]op,RiemannOperator\[Rule]op,RicciOperator\[Rule]op,RicciScalarOperator\[Rule]op] returns a Tensor object representing a metric M with indices \[Mu] and \[Nu] (either both upper, i.e., \!\(\*SuperscriptBox[\(\[Mu]\), \(-\)]\) and \!\(\*SuperscriptBox[\(\[Nu]\), \(-\)]\), or both lower, i.e. \!\(\*SubscriptBox[\(\[Mu]\), \(-\)]\) and \!\(\*SubscriptBox[\(\[Nu]\), \(-\)]\); the coordinates are specified through the List coords. The name of the metric is name, and the metric M itself can either be given as a square matrix or an expression quadratic in differentials of the coordinates (e.g. (\[DifferentialD]x\!\(\*SuperscriptBox[\()\), \(2\)]\)+(\[DifferentialD]y\!\(\*SuperscriptBox[\()\), \(2\)]\)). StartIndex i tells TensoriaCalc when to begin counting indices; for example spacetime indices usually start at 0 while spatial indices usually start at 1. The ChristoffelOperator, RiemannOperator, etc. specify operators that will be applied to the components of the Christoffel symbols, Riemann tensor, etc. (Note: TensorName, StartIndex, ChristoffelOperator, RiemannOperator, RicciOperator, RicciScalarOperator are optional; the defaults are name = \!\(\*
-StyleBox[\"g\",\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\",\",\nFontSlant->\"Italic\"]\) i = 0 and op = FullSimplify.) (\!\(\*
-StyleBox[\"II\",\nFontColor->RGBColor[0, 0, 1]]\)) Metric[\[Mu], \[Nu], \[Tau]_Tensor] takes in \[Tau], an object with Head Tensor, of TensorType Metric, and returns the same Tensor object with TensorComponents representing the metric (if \[Mu],\[Nu] are both SuperMinus), the inverse metric (if \[Mu],\[Nu] are both SubMinus), or the identity matrix (if one index is SubMinus and one is SuperMinus).";
-(*  *)
-NonMetricTensor::usage="NonMetricTensor[\[Mu]_List,stuff_List,CoordinateSystem\[Rule]coords_List,TensorName\[Rule]Unique[T],TensorType\[Rule]Null,TooltipDisplay\[Rule]Null,
-	StartIndex\[Rule]0] returns a Tensor with indices \[Mu], components (entered as a Table) stuff, coordinates coords, etc. TensorName, TensorType, TooltipDisplay, and StartIndex are Optional arguments, with default values as shown.";
-Riemann::usage="Riemann[\[Mu],\[Nu],\[Alpha],\[Beta],MetricT] takes in the metric MetricT and returns a Tensor containing the components of the Riemann curvature tensor, if indices are Symbols. If indices are Integers or if indices are the coordinates, the specified component will be returned.";
-Ricci::usage="Ricci[\[Nu],\[Beta],MetricT_Tensor] takes in the Tensor MetricT and returns a Tensor containing the components of the Ricci curvature tensor, if indices are Symbols. If indices are Integers or if indices are the coordinates, the specified component will be returned.";
-RicciScalar::usage="RicciScalar[MetricT] takes in the Tensor MetricT and returns the Ricci scalar.";
-Einstein::usage="Einstein[\[Nu],\[Beta],MetricT_Tensor,EinsteinOperator\[Rule]op] takes in the Tensor MetricT and returns a Tensor containing (the operation op applied to) the components of the Einstein tensor, where Einstein-Tensor = Ricci-Tensor - (Metric-Tensor/2) Ricci-Scalar \[LongDash] if indices are Symbols. If indices are Integers or if indices are the coordinates, the specified component will be returned. (EinsteinOperator is optional; if left unspecified, the default is op = FullSimplify.)";
-LeviCivita::usage="LeviCivita[\[Nu]1,\[Nu]2,...,\[Nu]d,MetricT_Tensor] takes in the Tensor MetricT (in \!\(\*
-StyleBox[\"d\",\nFontSlant->\"Italic\"]\) dimensions) and return a Tensor that yields the generally covariant Levi-Civita volume form, with indices \[Nu]1 through \[Nu]d. Note that Mathematica has an in-built LeviCivitaTensor, but it is really our LeviCivita here implemented for flat (Euclidean) space.";
-CovariantHodgeDual::usage="CovariantHodgeDual[\[Nu]I__,\[Tau]_Tensor,m_Tensor] returns the generally covariant Hodge dual of the Tensor \[Tau] using the Metric Tensor m. Note that Mathematica has an in-built HodgeDual, but it is really the Hodge dual (aka Hodge star operator) in flat (Euclidean) space. Now, the Hodge dual (aka Hodge star operation), in \!\(\*FormBox[\(d\),
-TraditionalForm]\) space(time) dimensions, of a fully antisymmetric tensor \!\(\*FormBox[SubscriptBox[\(A\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(n\)]\)],
-TraditionalForm]\) (where \!\(\*FormBox[\(n\\\  \[LessEqual] \\\ d\),
-TraditionalForm]\)), is defined as, for e.g., \[FivePointedStar]\!\(\*FormBox[SubscriptBox[\(A\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(d - n\)]\)],
+Tensor::usage="Tensor is a generic Head of tensorial objects in TensoriaCalc, whose Fullform takes the following expression:
+Tensor[Indices\[Rule]{\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\",\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\",\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"...\",\nFontSlant->\"Italic\"]\)},StartIndex\[Rule]\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\)_Integer,Coordinates\[Rule]\!\(\*
+StyleBox[\"coords\",\nFontSlant->\"Italic\"]\)_List,TensorComponents\[Rule]\!\(\*
+StyleBox[\"matrix\",\nFontSlant->\"Italic\"]\),TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\),TensorType\[Rule]\!\(\*
+StyleBox[\"tt\",\nFontSlant->\"Italic\"]\),TooltipDisplay\[Rule]Null,TooltipStyle\[Rule]{},TensorOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\),TensorAssumption\[Rule]\!\(\*
+StyleBox[\"ta\",\nFontSlant->\"Italic\"]\)_List,ChristoffelComponents\[Rule]\!\(\*
+StyleBox[\"ChrisRules\",\nFontSlant->\"Italic\"]\),MetricDeterminant\[Rule]\!\(\*
+StyleBox[\"Detg\",\nFontSlant->\"Italic\"]\),RiemannComponents\[Rule]\!\(\*
+StyleBox[\"RiemRules\",\nFontSlant->\"Italic\"]\),RicciComponents\[Rule]\!\(\*
+StyleBox[\"RicRules\",\nFontSlant->\"Italic\"]\),RicciScalarInvariant\[Rule]\!\(\*
+StyleBox[\"RRules\",\nFontSlant->\"Italic\"]\),TensorSymmetry\[Rule]\!\(\*
+StyleBox[\"ts\",\nFontSlant->\"Italic\"]\), FlatMetric\[Rule]\!\(\*
+StyleBox[\"fm\",\nFontSlant->\"Italic\"]\),OrthonormalFrameField\[Rule]\!\(\*
+StyleBox[\"onffuser\",\nFontSlant->\"Italic\"]\)_,InverseOrthonormalFrameField\[Rule]\!\(\*
+StyleBox[\"invonffuser\",\nFontSlant->\"Italic\"]\),OrthonormalFrameFieldOperator\[Rule]\!\(\*
+StyleBox[\"onffop\",\nFontSlant->\"Italic\"]\)].";
+
+
+(* ::Input::Initialization:: *)
+Indices::usage="(I) Indices\[Rule]{\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"...\",\nFontSlant->\"Italic\"]\)} is one of the mandatory properties of Tensor. An upper index carries a superscript \[OpenCurlyQuote]-\[OpenCurlyQuote] (for example, \!\(\*FormBox[SuperscriptBox[\(\[Alpha]\), \(-\)],
+TraditionalForm]\)=SuperMinus[\[Alpha]]) and a lower index a subscript \[OpenCurlyQuote]-\[OpenCurlyQuote]. (for example, \!\(\*SubscriptBox[\(\[Alpha]\), \(-\)]\)=SubMinus[\[Alpha]]). 
+(II) Indices[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor] takes in a Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) and returns a List of the indices in it. 
+(III) Indices[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor,\!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\)_List] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with Indices\[Rule]{\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"...\",\nFontSlant->\"Italic\"]\)} replaced by Indices\[Rule]\!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\)_List."
+
+
+(* ::Input::Initialization:: *)
+StartIndex::usage="(I) StartIndex\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\)_Integer\)] is one of the properties of Tensor that tells TensoriaCalc which Integer to start counting the coordinates from. For example, spacetime coordinates usually have StartIndex\[Rule]0 whereas purely spatial coordinates usually have StartIndex\[Rule]1. 
+(II) StartIndex[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of StartIndex\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\)_Integer\)] in the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\). 
+(III) StartIndex[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]\!\(\*
+StyleBox[\",\",\nFontSlant->\"Italic\"]\)si_Integer] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with StartIndex\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\)_Interger\)] replaced by StartIndex\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\)_Integer\)].";
+
+
+(* ::Input::Initialization:: *)
+TensorType::usage="(I) TensorType\[Rule]\!\(\*
+StyleBox[\"tt\",\nFontSlant->\"Italic\"]\) is one of the properties of Tensor. It specifies the type of Tensor. A list of TensorType's in TensoriaCalc can be found in the manual.
+(II) TensorType[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of TensorType\[Rule]\!\(\*
+StyleBox[\"tt\",\nFontSlant->\"Italic\"]\) in the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\). 
+(III) TensorType[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor,\!\(\*
+StyleBox[\"newtt\",\nFontSlant->\"Italic\"]\)] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with TensorType\[Rule]\!\(\*
+StyleBox[\"oldtt\",\nFontSlant->\"Italic\"]\) replaced by TensorType\[Rule]\!\(\*
+StyleBox[\"newtt\",\nFontSlant->\"Italic\"]\).";
+
+
+(* ::Input::Initialization:: *)
+TensorComponents::usage="(I)TensorComponents\[Rule]\!\(\*
+StyleBox[\"tc\",\nFontSlant->\"Italic\"]\) is one of the properties of Tensor. It defines the components for a given Tensor through \!\(\*
+StyleBox[\"tc\",\nFontSlant->\"Italic\"]\). 
+(II) TensorComponents[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of TensorComponents\[Rule]\!\(\*
+StyleBox[\"tc\",\nFontSlant->\"Italic\"]\).";
+
+
+(* ::Input::Initialization:: *)
+TensorName::usage="(I) TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\) is one of the properties of Tensor. It specifies the name of a Tensor.
+(II) TensorName[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\) in \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) Tensor.
+(III) TensorName[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)],\!\(\*
+StyleBox[\"newtn\",\nFontSlant->\"Italic\"]\)] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with TensorName\[Rule]\!\(\*
+StyleBox[\"oldtn\",\nFontSlant->\"Italic\"]\) replaced by TensorName\[Rule]\!\(\*
+StyleBox[\"newtn\",\nFontSlant->\"Italic\"]\)."
+
+
+(* ::Input::Initialization:: *)
+TensorAssumption::usage="(I) TensorAssumptions\[Rule]{} is one of the properties of a Tensor that helps to define the assumptions to Simplify or FullSimplify the whole Tensor. 
+(II) TensorAssumption[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of the Rule TensorAssumption\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"ta\",\nFontSlant->\"Italic\"]\)_List\)] in the \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) Tensor.
+(III) TensorAssumption[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)], \*
+StyleBox[\(\!\(\*
+StyleBox[\"newta\",\nFontSlant->\"Italic\"]\)_List\)]] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with TensorAssumption\[Rule]\*
+StyleBox[\(\!\(\*
+StyleBox[\"oldtn\",\nFontSlant->\"Italic\"]\)_\)] replaced by TensorAssumption\[Rule]\!\(\*
+StyleBox[\"newta\",\nFontSlant->\"Italic\"]\)_List."
+
+TensorOperator::usage="(I) TensorOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) is one of the properties of a Tensor, where \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) is an operator applied to the whole Tensor.
+(II) TensorOperator[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the right hand side of TensorOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) in \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) Tensor.
+(III) TensorOperator[\*
+StyleBox[\(\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor\)],\!\(\*
+StyleBox[\"newop\",\nFontSlant->\"Italic\"]\)] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with TensorOperator\[Rule]\!\(\*
+StyleBox[\"oldop\",\nFontSlant->\"Italic\"]\) replaced by TensorOperator\[Rule]\!\(\*
+StyleBox[\"newop\",\nFontSlant->\"Italic\"]\)."
+
+
+(* ::Input::Initialization:: *)
+TooltipDisplay::usage="
+TooltipDisplay
+(I) TooltipDisplay\[Rule]\!\(\*
+StyleBox[\"td\",\nFontSlant->\"Italic\"]\) is one of the properties of a Tensor, where ttd provides the contents of the display box that appears when the mouse hovers over the output. TooltipTyle is used to format these contents, see below.
+(II) TooltipDisplay[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor] returns the right hand side of TooltipDisplay\[Rule]ttd in \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) Tensor.
+(III) TooltipDisplay[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor,\!\(\*
+StyleBox[\"newtd\",\nFontSlant->\"Italic\"]\)] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its TooltipDisplay\[Rule]\!\(\*
+StyleBox[\"oldtd\",\nFontSlant->\"Italic\"]\) replaced by TooltipDisplay\[Rule]\!\(\*
+StyleBox[\"newtd\",\nFontSlant->\"Italic\"]\).
+TooltipStyle
+(I) TooltipStyle\[Rule]\!\(\*
+StyleBox[\"ts\",\nFontSlant->\"Italic\"]\)_List is one of the properties of a Tensor which helps to format the display box that appears when the mouse hovers over the output.
+(II) TooltipStyle[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor] returns the right hand side of the Rule TooltipStyle\[Rule]{tts} in \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) Tensor.
+(III) TooltipStyle[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)_Tensor,\!\(\*
+StyleBox[\"newts\",\nFontSlant->\"Italic\"]\)] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSlant->\"Italic\"]\)with its TooltipStyle\[Rule]\!\(\*
+StyleBox[\"oldts\",\nFontSlant->\"Italic\"]\) replaced with TootipStyle\[Rule]\!\(\*
+StyleBox[\"newts\",\nFontSlant->\"Italic\"]\)."
+
+
+(* ::Input::Initialization:: *)
+ToExpressionForm::usage="ToExpressionForm[t_Tensor] returns the tensor t as a superposition of basis partial derivatives and 1-forms for the rank-1 case, and a superposition of their tensor products for the higher rank case. If t is fully symmetric, the tensor product will be dropped. If t is fully anti-symmetric, then instead of tensor products, the basis wedge products of the basis 1-forms or partial derivatives would be used.";
+
+
+(* ::Input::Initialization:: *)
+ToTensorComponents::usage="ToTensorComponents[stuff,Coordinates\[Rule]coord_List] takes in the tensorial expression stuff \[LongDash] a superposition of basis 1-forms and partial derivatives or of their TensorProduct/Wedge's \[LongDash] and returns their components in the form of a List or List of List's. The argument Coordinates\[Rule]coord, from which the basis 1-forms and partial derivstives are derived, is mandatory.";
+
+
+(* ::Input::Initialization:: *)
+WedgeExpand::usage="WedgeExpand[tw] takes in the the tensorial expression tw \[LongDash] a superposition of Wedge's of basis 1-forms (or, partial derivatives) \[LongDash] and returns the same expression but with each Wedge expanded into the corresponding anti-symmetric superposition of TensorProduct's.";
+
+
+(* ::Input::Initialization:: *)
+Metric::usage="(I) Metric[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"M\",\nFontSlant->\"Italic\"]\),Coordinates\[Rule]{},TensorName\[Rule]\"g\",StartIndex\[Rule]0,MetricOperator\[Rule]Simplify,ChristoffelOperator\[Rule]Simplify,RiemannOperator\[Rule]Simplify,RicciOperator\[Rule]Simplify,RicciScalarOperator\[Rule]Simplify,TooltipStyle\[Rule]{}, TooltipDisplay\[Rule]Null,TensorOperator\[Rule]Simplify,TensorAssumption\[Rule]{}] returns a metric or inverse metric Tensor object. If \!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\) and \!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\) are SubMinus indices \[LongDash] i.e., it is a metric \[LongDash] \!\(\*
+StyleBox[\"M\",\nFontSlant->\"Italic\"]\) should be entered as a square matrix representing the metric components or a superposition of quadratic 1-forms. If \!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\) and \!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\) are SuperMinus indices \[LongDash] i.e., it is an inverse metric \[LongDash] \!\(\*
+StyleBox[\"M\",\nFontSlant->\"Italic\"]\) should be entered as a square matrix representing the inverse metric components or a superposition of quadratic 1-vectors. The coordinates are specified through the List coords in Coordinates\[Rule]coords. The optional TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\) means the metric's name is \!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\), with default tn = \"g\". The optional StartIndex tells TensoriaCalc when to begin counting indices, with default value is 0. The optional ChristoffelOperator, RiemannOperator, etc. specify operators that will be applied to the components of the Christoffel symbols, Riemann Tensor etc. 
+(II) Metric[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor] takes in the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType\[Rule]\"Metric\"), and returns the same Tensor object with TensorComponents representing the metric if \!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\), \!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\) are both SubMinus, the inverse metric if \!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\), \!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\) are both SuperMinus, or the identity matrix if one index is SubMinus and one is SuperMinus.
+(III) Metric[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"M\",\nFontSlant->\"Italic\"]\),Coordinates\[Rule]{},TensorName\[Rule]\"g\",StartIndex\[Rule]0,MetricOperator\[Rule]Simplify,ChristoffelOperator\[Rule]Simplify,RiemannOperator\[Rule]Simplify,RicciOperator\[Rule]Simplify,RicciScalarOperator\[Rule]Simplify,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,FlatMetric\[Rule]Null,OrthonormalFrameField\[Rule]Null,InverseOrthonormalFrameField\[Rule]Null,OrthonormalFrameFieldOperator\[Rule]Simplify,OrthonormalFrameFieldIndices\[Rule]Null,TensorOperator\[Rule]Simplify, TensorAssumption\[Rule]{}] returns the same (inverse) metric Tensor as in (I), with the addition of its orthonormal frame fields and its inverse. See OrthonormalFrameField's usage for more details.";
+
+
+(* ::Input::Initialization:: *)
+NonMetricTensor::usage="(I) NonMetricTensor[\*
+StyleBox[\(\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\)_List\)],stuff,tn,Coordinates\[Rule]{},TensorType\[Rule]Null,StartIndex\[Rule]0,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,TensorOperator\[Rule]Simplify,TensorAssumption\[Rule]{}] returns a Tensor object with Indices\[Rule]\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\), TensorComponents corresponding to stuff, TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\), Coordinates\[Rule]\!\(\*
+StyleBox[\"coords\",\nFontSlant->\"Italic\"]\); as well as the optional TensorType\[Rule]\!\(\*
+StyleBox[\"tt\",\nFontSlant->\"Italic\"]\), StartIndex\[Rule]\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\), TooltipStyle\[Rule]\!\(\*
+StyleBox[\"ts\",\nFontSlant->\"Italic\"]\), TooltipDisplay\[Rule]\!\(\*
+StyleBox[\"td\",\nFontSlant->\"Italic\"]\), TensorOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\), and TensorAssumption\[Rule]\!\(\*
+StyleBox[\"ta\",\nFontSlant->\"Italic\"]\). 1. There are two main ways to enter the TensorComponents stuff. It can be entered directly as a List, SparseArray, or SymmetrizedArray. It can also be entered as a superposition of (the TensorProduct or TensorWedge of) basis 1-forms and partial derivatives; which TensoriaCalc will then convert into a List (or List of List's). 2. TensorType defines the type of Tensor. 3. TooltipDisplay and TooltipStyle formats the display box that appears when the mouse hovers over the output. 4. StartIndex\[Rule]\!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\) tells TensoriaCalc when to begin counting indices; in particular, the first coordinate starts at \!\(\*
+StyleBox[\"si\",\nFontSlant->\"Italic\"]\), whose default value is 0. 5. The TensorOperator \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) is applied to the whole Tensor object. 6. TensorAssumptions allows the user to store assumptions regarding the coordinates and parameters occurring within the given geometry.
+(II) NonMetricTensor[{},\!\(\*
+StyleBox[\"\[CurlyPhi]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\),Coordinates\[Rule]{},TensorType\[Rule]Null,StartIndex\[Rule]0,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,TensorOperator\[Rule]Simplify,TensorAssumption\[Rule]{}] returns scalar (i.e., rank-0) Tensor object containing a scalar field \!\(\*
+StyleBox[\"\[CurlyPhi]\",\nFontSlant->\"Italic\"]\) (a regular expression), with TensorName\[Rule]\!\(\*
+StyleBox[\"tn\",\nFontSlant->\"Italic\"]\) and Coordinates\[Rule]coords. TensorType, TooltipDisplay, TooltipStyle, TensorAssumptions, TensorOperator, and StartIndex are optional arguments, with default values as shown.";
+
+
+(* ::Input::Initialization:: *)
+Christoffel::usage="Christoffel[\*
+StyleBox[\(\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\)_SuperMinus\)],\*
+StyleBox[\(\!\(\*
+StyleBox[\"\[Alpha]\",\nFontSlant->\"Italic\"]\)_SubMinus\)],\*
+StyleBox[\(\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\)_SubMinus\)],\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],TooltipStyle\[Rule]{},TooltipDisplay\[Rule]TensorComponents] extracts the Christoffel symbols stored in the metric Tensor\!\(\*
+StyleBox[\" \",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSlant->\"Italic\"]\)(TensorType must be \"Metric\") and returns them as a single Tensor object.";
+
+
+(* ::Input::Initialization:: *)
+Riemann::usage="Riemann[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Alpha]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\),\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] extracts the Riemann tensor components stored in the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") and returns them as a single Tensor object with Indices\[Rule]{\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Alpha]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\)}.";
+
+
+(* ::Input::Initialization:: *)
+Ricci::usage="Ricci[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] extracts the Ricci tensor components stored in the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") and returns them as a single Tensor object with Indices\[Rule]{\[Mu],\[Nu]}.";
+
+
+(* ::Input::Initialization:: *)
+RicciScalar::usage="(I) RicciScalar[\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)]] extracts the Ricci scalar stored in the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") and returns it as a regular expression.
+[Beta version](II) RicciScalar[\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],Tensor] extracts the Ricci scalar stored in the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") and returns it as a Tensor object with Indices\[Rule]{}, TensorName\[Rule]\"R\"; and Coordinates, StartIndex, TooltipStyle, TooltipDisplay, TensorAssumption, and TensorOperator inherited from the input metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\).";
+
+
+(* ::Input::Initialization:: *)
+Weyl::usage="Weyl[\!\(\*
+StyleBox[\"\[Mu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Alpha]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\),\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],WeylOperator\[Rule]Simplify,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] extracts the Weyl tensor components from the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) and returns them as a Tensor object. The optional WeylOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\), with default \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) = Simplify, means \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) will be applied to the Weyl components.";
+
+
+(* ::Input::Initialization:: *)
+Einstein::usage="Einstein[\!\(\*
+StyleBox[\"\[Nu]\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\),\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],EinsteinOperator\[Rule]Simplify,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] extracts the components of the Einstein tensor \!\(\*SubscriptBox[\(G\), \(\[Alpha]\[Beta]\)]\)=\!\(\*SubscriptBox[\(R\), \(\[Alpha]\[Beta]\)]\)-(1/2)\!\(\*SubscriptBox[\(g\), \(\[Alpha]\[Beta]\)]\)R (\!\(\*SubscriptBox[\(R\), \(\[Alpha]\[Beta]\)]\), \!\(\*SubscriptBox[\(g\), \(\[Alpha]\[Beta]\)]\), and R are respectively the Ricci tensor, metric, and Ricci scalar) from the metric Tensor m, and returns them as a Tensor object. The optional EinsteinOperator\[Rule]\!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\), with default \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) = Simplify, means \!\(\*
+StyleBox[\"op\",\nFontSlant->\"Italic\"]\) will be applied to the Einstein components.";
+
+
+(* ::Input::Initialization:: *)
+Determinant::usage="(I) Determinant[\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)]] returns the determinant of the metric \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") as a regular expression.
+[Beta version](II) Determinant[\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],Tensor] returns the determinant of the metric \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\") as a Tensor object, with Indices\[Rule]{} and TensorName\[Rule]|TensorName[\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)]|. Coordinates, StartIndex, TooltipDisplay, TooltipStyle, TensorAssumption, TensorOperator will be inherited from \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\).";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalFrameField::usage="OrthonormalFrameField serves three roles. 1. OrthonormalFrameField can be used to calculate and append (inverse) orthonormal frame fields to a pre-defined metric tensor. 2. OrthonormalFrameField applied to a metric extracts its (inverse) orthonormal frame fields. 3. OrthonormalFrameField\[Rule]onff and InverseOrthonormalFrameField\[Rule]invonff occurring within a metric Tensor (TensorType\[Rule]\"Metric\") stores its orthonormal frame field components in onff and invonff. 
+(I.1) OrthonormalFrameField[m_Tensor,OrthonormalFrameFieldOperator\[Rule]Simplify, OrthonormalFrameField\[Rule]onff,InverseOrthonormalFrameField\[Rule]invonff,OrthonormalFrameFieldIndices\[Rule]onffidx_List,FlatMetric\[Rule]fm_List,OutputForm\[Rule]Metric] takes in a diagonal Metric Tensor m without OrthonormalFrameField nor InverseOrthonormalFrameField specified, and \[LongDash] if the default OutputForm\[Rule]Metric is chosen \[LongDash] returns the same metric but now endowed with OrthonormalFrameField\[Rule]onff, InverseOrthonormalFrameField\[Rule]invonff, and FlatMetric\[Rule]fm. If OutputForm\[Rule]All is chosen instead, the output will be {onff,invonff,m}, where the onff and invonff are now in Tensor form and also stored in m. The user input fm must be a (flat) List containing the diagonal components of the associated flat space(time) metric, so that the orthonormal frame field component \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) may be computed as Kronecker[d,c]\[Cross]Power[fm\[LeftDoubleBracket]d-si,d-si\[RightDoubleBracket] Metric[d,d,m],1/2], where si is the StartIndex. The optional OrthonormalFrameFieldIndices\[Rule]onffidx, where onffidx must match the pattern {OverHat[_Symbol],_Symbol}, specifies the respective indices to appear on the orthonormal frame fields Tensor objects \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) and \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\).
+(I.2) OrthonormalFrameField[m_Tensor,OrthonormalFrameFieldOperator\[Rule]Simplify, OrthonormalFrameField\[Rule]onff,InverseOrthonormalFrameField\[Rule]invonff,OrthonormalFrameFieldIndices\[Rule]onffidx_List,FlatMetric\[Rule]fm_List,OutputForm\[Rule]Metric] takes an arbitrary Metric Tensor m with \!\(\*
+StyleBox[\"either\",\nFontSlant->\"Italic\"]\) OrthonormalFrameField or InverseOrthonormalFrameField specified (but not both) and \[LongDash] if the default OutputForm\[Rule]Metric is chosen \[LongDash] returns the same metric but now endowed with OrthonormalFrameField\[Rule]onff, InverseOrthonormalFrameField\[Rule]invonff, and FlatMetric\[Rule]fm. If OutputForm\[Rule]All is chosen instead, the output will be {onff,invonff,m}, where the onff and invonff are now in Tensor form and also stored in m. The user input fm must be a (flat) List containing the diagonal components of the associated flat space(time) metric.  The optional OrthonormalFrameFieldIndices\[Rule]onffidx, where onffidx must match the pattern {OverHat[_Symbol],_Symbol}, specifies the respective indices to appear on the orthonormal frame fields Tensor objects \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) and \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\).
+(I.3) OrthonormalFrameField[m_Tensor,OrthonormalFrameFieldOperator\[Rule]Simplify, OrthonormalFrameField\[Rule]onff,InverseOrthonormalFrameField\[Rule]invonff,OrthonormalFrameFieldIndices\[Rule]onffidx_List,FlatMetric\[Rule]fm_List,OutputForm\[Rule]Metric] takes an arbitrary Metric Tensor m with \!\(\*
+StyleBox[\"both\",\nFontSlant->\"Italic\"]\) OrthonormalFrameField or InverseOrthonormalFrameField specified and \[LongDash] if the default OutputForm\[Rule]Metric is chosen \[LongDash] returns the same metric but now endowed with OrthonormalFrameField\[Rule]onff, InverseOrthonormalFrameField\[Rule]invonff, and FlatMetric\[Rule]fm. If OutputForm\[Rule]All is chosen instead, the output will be {onff,invonff,m}, where the onff and invonff are now in Tensor form and also stored in m. The user input fm must be a (flat) List containing the diagonal components of the associated flat space(time) metric. The optional OrthonormalFrameFieldIndices\[Rule]onffidx, where onffidx must match the pattern {OverHat[_Symbol],_Symbol}, specifies the respective indices to appear on the orthonormal frame fields Tensor objects \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) and \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\).
+(I.4) OrthonormalFrameField[m_Tensor,eigens_List,odr_List,OrthonormalFrameFieldOperator\[Rule]Simplify, OrthonormalFrameField\[Rule]onff,InverseOrthonormalFrameField\[Rule]invonff,OrthonormalFrameFieldIndices\[Rule]onffidx_List,FlatMetric\[Rule]fm_List,OutputForm\[Rule]Metric] takes in a generic Metric Tensor m without OrthonormalFrameField nor InverseOrthonormalFrameField specified, computes them, and \[LongDash] if the default OutputForm\[Rule]Metric is chosen \[LongDash] returns m with OrthonormalFrameField\[Rule]onff, InverseOrthonormalFrameField\[Rule]invonff and FlatMetric\[Rule]fm_List stored inside. If OutputForm\[Rule]All is chosen instead, the output will be {onff,invonff,m}, where the onff and invonff are now in Tensor form and also stored in m. Here, the eigens must be Eigensystem[m] and odr is the order in which the former's eigenvector/value components need to be arranged. The user input fm must be a diagonal matrix, and is meant to represent the associated flat space(time) geometry. The optional OrthonormalFrameFieldIndices\[Rule]onffidx, where onffidx must match the pattern {OverHat[_Symbol],_Symbol}, specifies the respective indices to appear on the orthonormal frame fields Tensor objects \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) and \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\).
+(II.1) OrthonormalFrameField[OverHat[a],b,m_Tensor] extracts the (Inverse)OrthonormalFrameField Tensor \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\), \!\(\*SubscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\), \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\) or \!\(\*SuperscriptBox[\(\[CurlyEpsilon]\), \(\*OverscriptBox[\(a\), \(^\)] b\)]\)  from the metric Tensor m and returns it as a Tensor object.
+(II.2) OrthonormalFrameField[m_Tensor] extract the OrthonormalFrameField Tensor from Metric Tensor m, and returns the pair of Tensor objects {\!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\), \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(b\)]\)}.";
+
+
+(* ::Input::Initialization:: *)
+InverseOrthonormalFrameField::usage="InverseOrthonormalFrameField\[Rule]invoff is an optional argument of Tensor objects with TensorType\"Metric\", where invoff are the components of the inverse orthonormal frame fields of the given metric. For more details, refer to OrthonormalFrameField's usage.";
+
+
+(* ::Input::Initialization:: *)
+FlatMetric::usage="FlatMetric is the key toggle to trigger OrthonormalFrameField related calculations. By endowing a metric Tensor with the optional FlatMetric\[Rule]fm, its (inverse) orthonormal frame fields would be computed and stored. The fm must be a (flat) List containing the diagonal components of the associated flat space(time) metric \[LongDash] and FlatMetric\[Rule]fm itself can be fed to a metric Tensor by both the Metric and OrthonormalFrameField Functions.";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalFrameFieldOperator::usage="OrthonormalFrameFieldOperator\[Rule]op is an optional argument of both Metric and OrthonormalFrameField Functions. The op is applied to the results of an OrthonormalFrameField calculation, with default op = Simplify.";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalFrameFieldOperator::usage="OrthonormalFrameFieldOperator\[Rule]op is an optional argument of both Metric and OrthonormalFrameField Functions. The op is applied to the results of an OrthonormalFrameField calculation, with default op = Simplify.";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalFrameFieldIndices::usage="OrthonormalFrameFieldIndices\[Rule]{OverHat[\[Alpha]],\[Beta]}, where \[Alpha] and \[Beta] are indices \!\(\*
+StyleBox[\"without\",\nFontSlant->\"Italic\"]\) the SubMinus nor SuperMinus Head's, is an optional argument of both Metric and OrthonormalFrameField functions specifying the indices on the orthonormal frame fields and its inverse; namely, \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(\[Alpha]\), \(^\)]], \(\[Beta]\)]\) and \!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(\[Alpha]\), \(^\)]], \(\[Beta]\)]\).";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalFrameFieldQ::usage="OrthonormalFrameFieldQ[m_Tensor, OutputForm\[Rule]BooleanQ] takes in a Metric Tensor m with FlatMetric \!\(\*SubscriptBox[\(\[Eta]\), \(ab\)]\), OrthonormalFrameField \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(c\)]\), InverseOrthonormalFrameField \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(b\), \(^\)]], \(d\)]\) and OrthonormalFrameFieldOperator\[Rule]onffop stored inside, and verifies if \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(c\)]\) and \!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(b\), \(^\)]], \(d\)]\)'s defining relations \!\(\*SubscriptBox[\(g\), \(cd\)]\)=\!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(c\)]\)\!\(\*FormBox[SubscriptBox[\(\[Eta]\), \(ab\)],
+TraditionalForm]\)\!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(b\), \(^\)]], \(d\)]\) and \!\(\*SubscriptBox[\(\[Eta]\), \(cd\)]\)=\!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(c\), \(^\)]], \(a\)]\)\!\(\*FormBox[SubscriptBox[\(g\), \(ab\)],
+TraditionalForm]\)\!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(d\), \(^\)]], \(b\)]\) are satisfied. With the default value of the OptionValue OutputForm\[Rule]BooleanQ, it outputs True if both equations are True; otherwise, it outputs False. If OutputForm\[Rule]List is specified, it displays {\!\(\*SubscriptBox[\(g\), \(cd\)]\)==\!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(a\), \(^\)]], \(c\)]\)\!\(\*FormBox[SubscriptBox[\(\[Eta]\), \(ab\)],
+TraditionalForm]\)\!\(\*SubscriptBox[SuperscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(b\), \(^\)]], \(d\)]\), \!\(\*SubscriptBox[\(\[Eta]\), \(cd\)]\)==\!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(c\), \(^\)]], \(a\)]\)\!\(\*FormBox[SubscriptBox[\(g\), \(ab\)],
+TraditionalForm]\)\!\(\*SuperscriptBox[SubscriptBox[\(\[CurlyEpsilon]\), OverscriptBox[\(d\), \(^\)]], \(b\)]\)}.";
+
+
+(* ::Input::Initialization:: *)
+TensorsProduct::usage="(I) TensorsProduct[Times[t1_Tensor,t2_Tensor,...]] \[LongDash] not to be confused with Mathematica's own TensorProduct \[LongDash] returns a single Tensor object with TensorComponents corresponding to Times[t1_Tensor,t2_Tensor,...]. All other attributes of the output Tensor are inherited from the one of the Tensor's in the sequence. Note that if there is a pair of up-down repeated indices, with the two indices occurring on different Tensors, tensor contraction will be triggered automatically. Additionally, if two Tensor objects do not share the same coordinate system, they will \!\(\*
+StyleBox[\"not\",\nFontSlant->\"Italic\"]\) be combined into the same Tensor object by TensorsProduct.
+(II) TensorsProduct[{t1_Tensor,t2_Tensor,...}] returns the same result as in (I), with TensorComponents given by t1\[TensorProduct]t2\[TensorProduct]...; i.e., in the precise order given by {t1,t2,...}.";
+
+
+(* ::Input::Initialization:: *)
+ContractTensors::usage="(I) ContractTensors[Times[t1_Tensor,t2_Tensor,...]] will contract together tensors with repeated indices and return them as a single Tensor object, with the attributes of the output Tensor inherited from one of the Tensor's. 
+(II) ContractTensors[{t1_Tensor,t2_Tensor,...}] returns the same result as (I), but the tensors are multiplied in the precise order specified by {t1,t2,...}.";
+
+
+(* ::Input::Initialization:: *)
+SwapIndices::usage="SwapIndices[t_Tensor,idx_List] takes in a rank-n Tensor t returns \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\), with its un-UnderBarred indices (say, \!\(\*FormBox[SubscriptBox[\(i\), \(1\)],
+TraditionalForm]\) ... \!\(\*FormBox[SubscriptBox[\(i\), \(n\)],
+TraditionalForm]\)) re-arranged into \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) (say, \!\(\*FormBox[SubscriptBox[\(j\), \(1\)],
+TraditionalForm]\) ... \!\(\*FormBox[SubscriptBox[\(j\), \(n\)],
+TraditionalForm]\)), where the latter is a permutation of the former indices set, i.e., all the members of j should comes from i non-repeatedly; with its TensorComponents re-arranged accordingly. When specifying \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\), do not include the UnderBarred (i.e., inert) Indices of \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\).";
+
+
+(* ::Input::Initialization:: *)
+MoveIndices::usage="(I) MoveIndices[t_Tensor,idx_List,m_Tensor] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its indices moved \[LongDash] using the Metric Tensor m (TensorType must be \"Metric\") \[LongDash] into the configuration of indices position or basis given by \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) List; and its TensorComponents accordingly contracted into m, m's inverse, and/or the orthonormal frame fields. The output indices \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) can contain both coordinate basis and OverHat (orthonormal basis) ones. If idx does contain orthonormal indices, m needs to contain calculated OrthonormalFrameField and InverseOrthonormalFrameField.
+(II) MoveIndices[t_Tensor,OrthonormalBasis,m_Tensor] returns the Tensor t but converts all its indices into orthonormal ones by contracting its TensorComponents with the metric m's orthonormal frame fields and their inverses. The positions of t's indices are retained.
+(III) MoveIndices[t_Tensor,CoordinateBasis,m_Tensor] converts all its indices into coordinate ones by contracting its TensorComponents with the metric m's orthonormal frame fields and their inverses. The positions of t's indices are retained.";
+
+
+(* ::Input::Initialization:: *)
+RaiseAllIndices::usage="RaiseAllIndices[t_Tensor,m_Tensor] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with all its indices raised using the Metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\").";
+
+
+(* ::Input::Initialization:: *)
+LowerAllIndices::usage="LowerAllIndices[t_Tensor,m_Tensor] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with all its indices lowered using the Metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\").";
+
+
+(* ::Input::Initialization:: *)
+UniqueIndices::usage="UniqueIndices[t_Tensor] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with all its indices replaced with Unique ones.";
+
+
+(* ::Input::Initialization:: *)
+SymmetrizeIndices::usage="(I) SymmetrizeIndices[idx_List,t_Tensor,SymmetrizeIndicesOperator\[Rule](#&)] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its indices \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) symmetrized; i.e., with its TensorComponents symmetrized accordingly. Every index in \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) must be an index from Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\). The optional SymmetrizeIndicesOperator\[Rule]op means op will be applied to the output TensorComponents, with the default op = #& being an 'identity' operator.
+(II) SymmetrizeIndices[t_Tensor,SymmetrizeIndicesOperator\[Rule](#&)] returns the Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its Indices and TensorComponents fully symmetrized.";
+
+
+(* ::Input::Initialization:: *)
+AntiSymmetrizeIndices::usage="(I) AntiSymmetrizeIndices[idx_List,t_Tensor,AntiSymmetrizeIndicesOperator\[Rule](#&)] returns Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its indices idx anti-symmetrized; i.e., with its TensorComponents anti-symmetrized accordingly. Every index in \!\(\*
+StyleBox[\"idx\",\nFontSlant->\"Italic\"]\) must be an index from Tensor \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\). The optional AntiSymmetrizeIndicesOperator\[Rule]op means op will be applied to the output TensorComponents, with the default op = #& being an 'identity' operator.
+(II) AntiSymmetrizeIndices[t_Tensor,AntiSymmetrizeIndicesOperator\[Rule](#&)] returns \!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\) with its Indices and TensorComponents fully anti-symmetrized.";
+
+
+(* ::Input::Initialization:: *)
+PartialD::usage="(I) PartialD[\[Mu],t,m_Tensor] returns a Tensor object with TensorComponents corresponding to \!\(\*FormBox[SubscriptBox[\(\[PartialD]\), \(\[Mu]\)],
+TraditionalForm]\)t or \!\(\*FormBox[\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)] \*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\),
+TraditionalForm]\)t, where t can be either a regular expression or a Tensor object. Here, \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) is the inverse metric associated with the metric Tensor \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be \"Metric\"). The \!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\) is the derivative with respect to the \[Mu]-th coordinate of the geometry m.
+(II) PartialD[\!\(\*SubscriptBox[\(\[Mu]\), \(-\)]\),t_Tensor] (shortcut \!\(\*SubscriptBox[\(\[PartialD]\), \(TraditionalForm\`\*SubscriptBox[\(\[Mu]\), \(-\)]\)]\)t or D[t_Tensor,\!\(\*FormBox[SubscriptBox[\(\[Mu]\), \(-\)],
+TraditionalForm]\)]) returns the same result as in (I) but \[Mu] can only be a lower index because the geometry is not provided.
+(III) PartialD[\!\(\*SubscriptBox[\(\[Mu]\), \(-\)]\),t,Coordinates\[Rule]coord_List] returns a Tensor object with TensorComponents corresponding to \!\(\*FormBox[SubscriptBox[\(\[PartialD]\), \(\[Mu]\)],
+TraditionalForm]\)t or \!\(\*FormBox[\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)] \*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\),
+TraditionalForm]\)t, where t can be either a regular expression or a Tensor object, where \!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\) is the derivative with respect to the \[Mu]-th coordinate of coord.
+(IV) PartialD[t_Tensor,z] returns a Tensor object with TensorComponents \!\(\*FormBox[SubscriptBox[\(\[PartialD]\), \(z\)],
+TraditionalForm]\)t.";
+
+
+(* ::Input::Initialization:: *)
+CovariantD::usage="CovariantD[\[Mu],t_Tensor,m_Tensor] returns a Tensor object with TensorComponents consisting of the components of \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\)t (or \!\(\*SuperscriptBox[\(\[Del]\), \(\[Mu]\)]\)t), where \[Del] is the metric-compatible covariant derivative with respect to the metric m.";
+
+
+(* ::Input::Initialization:: *)
+CovariantBox::usage="CovariantBox[S,m_Tensor] returns \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\)\!\(\*SuperscriptBox[\(\[Del]\), \(\[Mu]\)]\) applied to S, where \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\)\!\(\*SuperscriptBox[\(\[Del]\), \(\[Mu]\)]\) is the the covariant 'Laplacian' with respect to the metric \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be Metric). If S is a regular expression, the output will be a regular expression. If S is a Tensor object, the output will be a Tensor object.";
+
+
+(* ::Input::Initialization:: *)
+GradientSquared::usage="GradientSquared[S,m_Tensor] takes in a regular expression S and returns the regular expression \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\)S\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\)S, where \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) is the inverse metric associated with the metric \!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\) (TensorType must be Metric).";
+
+
+(* ::Input::Initialization:: *)
+InteriorProduct::usage="(I) InteriorProduct[X_Tensor,\[Omega]_Tensor] (shortcut \!\(\*SubscriptBox[\(\[Iota]\), \(X\)]\)[\[Omega]], \[Iota]=\\[Iota]) contracts an n-vector \!\(\*SuperscriptBox[\(X\), \(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(n\)]\)]\) with an m-form \!\(\*FormBox[SubscriptBox[\(TraditionalForm\`\[Omega]\), \(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(m\)]\)],
+TraditionalForm]\) and returns it as a Tensor object. Specifically, if 1\[LessEqual]n\[LessEqual]m. the result is (1/n!)\!\(\*SuperscriptBox[\(X\), \(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(n\)]\)]\)\!\(\*SubscriptBox[\(TraditionalForm\`\[Omega]\), \(\(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(n\)]\\\ \*SubscriptBox[\(\[Alpha]\), \(n + 1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(m\)]\)]\); if 1\[LessEqual]m\[LessEqual]n, the result is (1/m!)\!\(\*SuperscriptBox[\(X\), \(\(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(m\)]\\\ \*SubscriptBox[\(\[Alpha]\), \(m + 1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(n\)]\)]\)\!\(\*SubscriptBox[\(TraditionalForm\`\[Omega]\), \(\(\*SubscriptBox[\(\[Alpha]\), \(1\)] ... \) \*SubscriptBox[\(\[Alpha]\), \(m\)]\)]\). If n=m, the output will be a scalar expression form.
+[Beta version](II) InteriorProduct[X_Tensor,\[Omega]_Tensor,Tensor] returns the same result of (I). Except when n=m, the output will be a scalar Tensor.";
+
+
+(* ::Input::Initialization:: *)
+ExteriorD::usage="(I) ExteriorD[\!\(\*FormBox[SubscriptBox[\(\[Mu]\), \(-\)],
+TraditionalForm]\),T_Tensor] (shortcut \!\(\*SubscriptBox[\(\[DifferentialD]\), SubscriptBox[\(\[Mu]\), \(-\)]]\)T) computes the exterior derivative \[DifferentialD]T of the n-form T and returns the result as a Tensor object. Specifically, (\[DifferentialD]T\!\(\*SubscriptBox[\()\), \(\(\[Mu]\\\ \*SubscriptBox[\(\[Nu]\), \(1\)]\\\  ... \)\\\ \*SubscriptBox[\(\[Nu]\), \(n\)]\)]\)=(1/n!)\!\(\*SubscriptBox[\(\[PartialD]\), \([\[Mu]\)]\)\!\(\*SubscriptBox[\(T\), \(\(\(\*SubscriptBox[\(\[Nu]\), \(1\)]\\\  ... \)\\\ \*SubscriptBox[\(\[Nu]\), \(n\)]\)\(]\)\)]\).
+(II) ExteriorD[\!\(\*FormBox[\({\*SubscriptBox[\(\[Mu]\), \(-\)], \*SubscriptBox[\(\[Mu]1\), \(-\)], \(\(...\) \*SubscriptBox[\(\[Mu]n\), \(-\)]\)}\),
+TraditionalForm]\),T_Tensor] (shortcut \!\(\*SubscriptBox[\(\[DifferentialD]\), \(TraditionalForm\`{\*SubscriptBox[\(\[Mu]\), \(-\)], \*SubscriptBox[\(\[Mu]1\), \(-\)], \(\(...\) \*SubscriptBox[\(\[Mu]n\), \(-\)]\)}\)]\)T) returns the same output as (I), except users may now specify the output Indices through \!\(\*FormBox[\({\*SubscriptBox[\(\[Mu]\), \(-\)], \*SubscriptBox[\(\[Mu]1\), \(-\)], \(\(...\) \*SubscriptBox[\(\[Mu]n\), \(-\)]\)}\),
+TraditionalForm]\). The Length of the first argument should be n+1 if T is a n-form.
+(III) ExteriorD[\!\(\*FormBox[\(\[Mu]\),
+TraditionalForm]\),T_Tensor,m_Tensor] returns the same \[DifferentialD]T result as in (I), except the index \[Mu] and the Indices of T can now take arbitrary positions \[LongDash] they would be moved accordingly using the metric Tensor m.
+(IV) ExteriorD[\!\(\*FormBox[\({\[Mu], \[Mu]1, \(\(...\) \(\[Mu]n\)\)}\),
+TraditionalForm]\),T_Tensor,m_Tensor] returns the same \[DifferentialD]T result as in (III) but the user may now specify the output Indices through {\[Mu],\[Mu]1,...\[Mu]n}. The Length of the first argument should be n+1 if T is a n-form.
+(V) ExteriorD[T_Tensor] (shortcut \[DifferentialD]T) returns the same output as in (I), except the extra index corresponding to the exterior derivative is automatically generated as a Unique one.";
+
+
+(* ::Input::Initialization:: *)
+PotentialForm::usage="(I) PotentialForm[\[Alpha]_Tensor,TensorName\[Rule]\"\[Beta]\",StartingPoint\[Rule]{0,...,0},IntegrationVariable\[Rule]Unique[\[Lambda]1], TooltipDisplay\[Rule]Null] assumes the exterior derivative of the n-form Tensor \[Alpha] is zero (\[DifferentialD]\[Alpha]=0), returns the n-1 form \[Beta] such that \[Alpha] = \[DifferentialD]\[Beta]. Specifically, \!\(\*SubscriptBox[\(\[Beta]\), \(\(\*SubscriptBox[\(\[Mu]\), \(2\)] \*SubscriptBox[\(\[Mu]\), \(3\)] ... \) \*SubscriptBox[\(\[Mu]\), \(n\)]\)]\)[x] = \!\(\*SuperscriptBox[SubscriptBox[\(\[Integral]\), \(0\)], \(1\)]\)\!\(\*SuperscriptBox[\(\[Lambda]\), \((n - 1)\)]\) (x-\!\(\*SubscriptBox[\(x\), \(0\)]\)\!\(\*SuperscriptBox[\()\), \(l\)]\)\!\(\*SubscriptBox[\(\[Alpha]\), \(\(\*SubscriptBox[\(l\[Mu]\), \(2\)] \*SubscriptBox[\(\[Mu]\), \(3\)] ... \) \*SubscriptBox[\(\[Mu]\), \(n\)]\)]\)[\!\(\*SubscriptBox[\(x\), \(0\)]\)+\[Lambda](x-\!\(\*SubscriptBox[\(x\), \(0\)]\))]\[DifferentialD]\[Lambda], and if the optional StartingPoint\[Rule]x0 is not provided by the user, the default x0={0,...,0} will be used instead. If Integrate cannot be carried out explicitly, user can input the integration variable \[Lambda]; and if \[Lambda] is not specified, a Unique \[Lambda] will be generated. The default value for TensorName\[Rule]nm is nm=\"\[Beta]\". If n>1, the output \[Beta] will be a Tensor Object. If n=1, the output \[Beta] will be a regular expression.
+[Beta version] (II) PotentialForm[\[Alpha]_Tensor,Tensor,TensorName\[Rule]\"\[Beta]\",StartingPoint\[Rule]sp,IntegrationVariable\[Rule]\[Lambda], TooltipDisplay\[Rule]Null]. By inserting Tensor as the second argument, The output will be the same as PotentialForm[\[Alpha]_Tensor, TensorName\[Rule]\"\[Beta]\", StartingPoint\[Rule]sp, IntegrationVariable\[Rule]\[Lambda], TooltipDisplay\[Rule]Null] for n>1. For n=1, the output will be a scalar Tensor object instead.";
+
+
+(* ::Input::Initialization:: *)
+StartingPoint::usage="StartingPoint\[Rule]x0 is an optional argument of PotentialForm, with x0 specifying the starting point of integration in the solution of \[Beta], whose exterior derivative yields the user input n-form \[Alpha] (namely, \[Alpha]=\[DifferentialD]\[Beta]). If StartingPoint is not specified, by default it is {0,0,...,0}."
+
+
+(* ::Input::Initialization:: *)
+IntegrationVariable::usage="IntegrationVariable\[Rule]\[Lambda] is an optional argument of PotentialForm. If the Integrate in PotentialForm cannot be carried out explicitly, \[Lambda] will be used as the integration variable; if \[Lambda] is not specified, Unique[\[Lambda]1] will be used.";
+
+
+(* ::Input::Initialization:: *)
+LeviCivita::usage="LeviCivita[\[Nu]1,\[Nu]2,...,\[Nu]d,MetricT_Tensor] returns the Tensor associated with the Levi-Civita pseudo-tensor of the metric Tensor MetricT (in \!\(\*
+StyleBox[\"d\",\nFontSlant->\"Italic\"]\) dimensions), with Indices\[Rule]{\[Nu]1,...,\[Nu]d}. (Note that Mathematica has an in-built LeviCivitaTensor, but it is really the LeviCivita here implemented for flat (Euclidean) space.) If {\[Nu]1,\[Nu]2,...,\[Nu]d} are all lower indices, the Levi-Civita pseudo-tensor is \!\(\*SubscriptBox[OverscriptBox[\(\[Epsilon]\), \(~\)], \(\(\[Nu]1\\\ \[Nu]2\\\  ... \)\\\ \[Nu]d\)]\) = \!\(\*SqrtBox[\(\(|\)\(g\)\(|\)\)]\)\!\(\*SubscriptBox[\(\[Epsilon]\), \(\(\[Nu]1\\\ \[Nu]2\\\  ... \)\\\ \[Nu]d\)]\), with \!\(\*SubscriptBox[\(\[Epsilon]\), \(\(si\\\ si + 1\\\  ... \)\\\ si + d\)]\) = 1 and si is the StartIndex. Note that the Indices {\[Nu]1,\[Nu]2,...,\[Nu]d} can otherwise be in arbitrary positions.
+LeviCivita[\[Nu]1,\[Nu]2,...,\[Nu]d,m_Tensor,Minus] declares the same output Tensor with LeviCivita[\[Nu]1,\[Nu]2,...,\[Nu]d,MetricT_Tensor] but up to a minus sign, by defining \!\(\*SubscriptBox[\(\[Epsilon]\), \(\(si\\\ si + 1\\\  ... \)\\\ si + d\)]\) = -1, where si is the StartIndex.";
+
+
+(* ::Input::Initialization:: *)
+CovariantHodgeDual::usage="(I) CovariantHodgeDual[\[Mu]I___,\[Tau]_Tensor,m_Tensor] returns the generally covariant Hodge dual of the Tensor \[Tau] using the Metric Tensor m. Note that Mathematica has an in-built HodgeDual, but it is really the Hodge dual (aka Hodge star operator) in flat (Euclidean) space. Now, the covariant Hodge dual (aka Hodge star operation), in \!\(\*FormBox[\(d\),
+TraditionalForm]\) space(time) dimensions, of an n-form \!\(\*FormBox[SubscriptBox[\(A\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(n\)]\)],
+TraditionalForm]\) (where 0 \[LessEqual] \!\(\*FormBox[\(n\\\  \[LessEqual] \\\ d\),
+TraditionalForm]\)), is defined as (\[FivePointedStar]\!\(\*FormBox[SubscriptBox[\(\(A\)\()\)\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(d - n\)]\)],
 TraditionalForm]\)\[Congruent]\!\(\*FormBox[\((1/\(n!\))\),
 TraditionalForm]\)\!\(\*FormBox[SubscriptBox[OverscriptBox[\(\[Epsilon]\), \(~\)], \(\(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(d - n\)] \*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(n\)]\)],
 TraditionalForm]\)\!\(\*FormBox[SuperscriptBox[\(A\), \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(n\)]\)],
-TraditionalForm]\). Note: CovariantHodgeDual does check whether the Tensor \[Tau] is fully antisymmetric.";
-EinsteinOperator::usage="EinsteinOperator->op is an Option when using the TensoriaCalc function Einstein. It tells TensoriaCalc to apply op to the components of the Einstein tensor. The default op = FullSimplify.";
-Weyl::usage="Weyl[\[Mu],\[Nu],\[Alpha],\[Beta],MetricT_Tensor] takes in the metric MetricT and returns a Tensor containing the components of the Weyl curvature tensor, if indices are Symbols. If indices are Integers or if indices are the coordinates, the specified component will be returned.";
-WeylOperator::usage="WeylOperator->op is an Option when using the TensoriaCalc function Weyl. It tells TensoriaCalc to apply op to the components of the Weyl curvature tensor. The default op = FullSimplify.";
-CoordinateSystem::usage="CoordinateSystem defines the variables used in a given coordinate system. For example CoordinateSystem \[Rule] {t,x,y,z}.";
-Coordinates::usage="Coordinates[M_Tensor] takes in a Tensor of type Metric and returns a List of the coordinates used.";
-TensorComponents::usage="(I) TensorComponents \[Rule] tt is one of the arguments of Tensor. It defines the components for a given Tensor through tt. (II) TensorComponents[m_Tensor] takes in a Tensor object m and returns its TensorComponents";
+TraditionalForm]\)., where the \!\(\*OverscriptBox[\(\[Epsilon]\), \(~\)]\) is the Levi-Civita pseudo-tensor with respect to the metric m. Note that the Length of \[Mu]I must be equal to d-n.
+(II) CovariantHodgeDual[\[Mu]I___,f_,m_Tensor] takes in a regular expression f and returns the Tensor object corresponding to \!\(\*FormBox[SubscriptBox[OverscriptBox[\(\[Epsilon]\), \(~\)], \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(d\)]\)],
+TraditionalForm]\)\!\(\*FormBox[\(f\),
+TraditionalForm]\). Note that the Length of \[Mu]I must be equal to d.
+[Beta version] (III) CovariantHodgeDual[\[Tau]_Tensor,m_Tensor, Tensor] extraly enters Tensor as the fourth argument, as a toggle to make the output a scalar Tensor.
+(IV) CovariantHodgeDual[\[Tau]_Tensor,m_Tensor] takes in a rank-n Tensor \[Tau] in d dimension. It automatically generates a Sequence of Unique Indices \[Mu]I___ with Length d-n and trigger CovariantHodgeDual[\[Mu]I,\[Tau],m]. Only if \[Tau] is an n-form, with all Indices downstairs, then the output will be an (d-n)-vector, with all Indices upstairs. Otherwise, if input is a n-vector or a rank-n Tensor with mixed Indices position. The output will be a (d-n)-form Tensor, with all Indices downstairs.";
+
+
+(* ::Input::Initialization:: *)
+FullyAntiSymmetricTensorQ::usage="FullyAntiSymmetricTensorQ[t_Tensor] takes in an N-form or N-vector Tensor t and verifies if it is fully anti-symmetric. If the TensorComponents of t is fully anti-symmetric and if N is greater than 1, FullyAntiSymmetricTensorQ returns True; otherwise, it returns False. Note: this means scalars, 1-forms and (rank-1) vectors will return False.";
+
+
+(* ::Input::Initialization:: *)
+LieD::usage="(I) LieD[\[Xi]_Tensor,t_Tensor,Indices\[Rule]Null,LieDerivativeOperator\[Rule]Simplify,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] returns the Lie derivative of the Tensor m with respect to the rank-1 Tensor (vector) \!\(\*SuperscriptBox[\(\[Xi]\), \(\[Mu]\)]\). If t is with TensorType \"Metric\", then its Lie derivative is \!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) = \!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)+\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Nu]\[Sigma]\)]\)+\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Sigma]\)]\). If t is a general tensor \!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\), then its Lie derivative is \!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]\)]\)\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)=\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)-\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\[Sigma]\\\ \*SubscriptBox[\(\[Mu]\), \(2\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), SubscriptBox[\(\[Mu]\), \(1\)]]\)-...-\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\\\ \)\(\(\*SubscriptBox[\(\[Mu]\), \(1\)] \*SubscriptBox[\(\[Mu]\), \(2\)] ... \) \[Sigma]\)\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), SubscriptBox[\(\[Mu]\), \(N\)]]\)+\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\[Sigma]\\\ \*SubscriptBox[\(\[Nu]\), \(2\)] ... \) \*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), SubscriptBox[\(\[Nu]\), \(1\)]]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)+...+\!\(\*SubscriptBox[SuperscriptBox[\(T\), \(\(\*SubscriptBox[\(\[Mu]\), \(1\)] ... \) \*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(\*SubscriptBox[\(\[Nu]\), \(1\)] ... \) \[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), SubscriptBox[\(\[Nu]\), \(N\)]]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\); The LieDerivativeOperator\[Rule]op is an optional rule, with the default op = Simplify. If left un-specified, the optional Indices, TooltipStyle, and TooltipDisplay would be inherited from t.
+(II) LieD[\[Xi]_Tensor,f] returns the Lie derivative of the regular expression f with respect to \[Xi]; namely, \!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)f (as a regular expression, not a Tensor object).
+(III) \!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]\)]\)t (\[Sterling]=\\[Sterling]) is a shortcut to trigger any LieD pattern; for example, \!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]\)]\)f will return \!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)f in (II)."; 
+
+
+(* ::Input::Initialization:: *)
+LieBracket::usage="LieBracket[\[Xi]1_Tensor,\[Xi]2_Tensor,LieDerivativeOperator\[Rule]Simplify,LieBracketOperator\[Rule]Simplify,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,Indices\[Rule]idx_List] computes the Lie bracket [\[Xi]1, \[Xi]2\!\(\*SuperscriptBox[\(]\), \(\[Alpha]\)]\)=(\!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]1\)]\)\[Xi]2\!\(\*SuperscriptBox[\()\), \(\[Alpha]\)]\) of the vectors \[Xi]1 and \[Xi]2 and return the result as a Tensor object. The optional LieDerivativeOperator\[Rule]op1 and LieBracketOperator\[Rule]op2, with default values op1 = op2 = Simplify, means either op1 or op2 are applied to the Lie bracket components. If both are specified, LieBracketOperator has higher priority.";
+
+
+(* ::Input::Initialization:: *)
+LieBracketOperator::usage="LieBracketOperator is an OptionValue of LieBracket. It serves as an Operator during the LieBracket calculation. Its default value is Simplify.";
+
+
+(* ::Input::Initialization:: *)
+JacobianComponents::usage="(I) JacobianComponents[{x1\[Rule]f1[x1,x2,x3,...,xd], x2\[Rule]f2[x1,x2,x3,...,xd], x3\[Rule]f3[x1,x2,x3,...,xd], ...,xd\[Rule]fd[x1,x2,x3,...,xd]}] returns the d\[Cross]d Jacobian matrix \[PartialD]fi/\[PartialD]xj as a List of List's, where i is the row and j is the column number.
+(II) JacobianComponents[{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], ...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]}, {\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]D}] returns the d\[Cross]D Jacobian matrix \[PartialD]fi/\[PartialD]\[Xi]j as a List of List's, where 1\[LessEqual]i\[LessEqual]d is the row number and 1\[LessEqual]j\[LessEqual]D\[LessEqual]d is the column number. The main difference between (I) and (II) is that (II) allows for new coordinates on the right hand side of the transformation rules.";
+
+
+(* ::Input::Initialization:: *)
+CoordinateTransformation::usage="(I.1) CoordinateTransformation[{x1\[Rule]f1[x1,x2,x3,...,xd], x2\[Rule]f2[x1,x2,x3,...,xd],x3\[Rule]f3[x1,x2,x3,...,xd], ...,xd\[Rule]fd[x1,x2,x3,...,xd]}] returns a List of the input coordinate transformations together with the transformation Rule's of both the 1-forms (i.e., infinitesimal displacements) and partial derivatives: Union[{x1\[Rule]f1[x1,x2,x3,...,xd],x2\[Rule]f2[x1,x2,x3,...,xd],x3\[Rule]f3[x1,x2,x3,...,xd],...,xd\[Rule]fd[x1,x2,x3,...,xd]},{\[DifferentialD]x1\[Rule](\[PartialD]f1/\[PartialD]x1)\[DifferentialD]x1+(\[PartialD]f1/\[PartialD]x2)\[DifferentialD]x2+ ...+(\[PartialD]f1/\[PartialD]xd)\[DifferentialD]xd,\[DifferentialD]x2\[Rule](\[PartialD]f2/\[PartialD]x1)\[DifferentialD]x1+(\[PartialD]f2/\[PartialD]x2)\[DifferentialD]x2+...+(\[PartialD]f2/\[PartialD]xd)\[DifferentialD]xd,...,\[DifferentialD]xd\[Rule](\[PartialD]fd/\[PartialD]x1)\[DifferentialD]x1+(\[PartialD]fd/\[PartialD]x2)\[DifferentialD]x2+...+(\[PartialD]fd/\[PartialD]xd)\[DifferentialD]xd},{Del[x1]\[Rule](\[PartialD]x1/\[PartialD]f1)Del[x1]+(\[PartialD]x2/\[PartialD]f1)Del[x2]+...+(\[PartialD]xd/\[PartialD]f1)Del[xd],Del[x2]\[Rule](\[PartialD]x1/\[PartialD]f2)Del[x1]+(\[PartialD]x2/\[PartialD]f2)Del[x2]+ ...+(\[PartialD]xd/\[PartialD]f2)Del[xd], ...,Del[xd]\[Rule](\[PartialD]x1/\[PartialD]fd)Del[x1]+(\[PartialD]x2/\[PartialD]fd)Del[x2]+ ...+(\[PartialD]xd/\[PartialD]fd)Del[xd]}].
+(I.2) CoordinateTransformation[{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], ...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]},{\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D}] returns a List of the input coordinate transformations together with the transformation Rule's of both the 1-forms (i.e., infinitesimal displacements) and \[LongDash] if and only if d=D (i.e., same number of input and output coordinates) \[LongDash] partial derivatives. That is, for D<d, the output is Union[{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]},{\[DifferentialD]x1\[Rule](\[PartialD]f1/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]f1/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]f1/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]D,\[DifferentialD]x2\[Rule](\[PartialD]f2/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]f2/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]f2/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]D, ...,\[DifferentialD]xd\[Rule](\[PartialD]fd/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]fd/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]fd/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]}]; while for D=d, the output is Union[{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]},{\[DifferentialD]x1\[Rule](\[PartialD]f1/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]f1/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]f1/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]D,\[DifferentialD]x2\[Rule](\[PartialD]f2/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]f2/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]f2/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]D, ...,\[DifferentialD]xd\[Rule](\[PartialD]fd/\[PartialD]\[Xi]1)\[DifferentialD]\[Xi]1+(\[PartialD]fd/\[PartialD]\[Xi]2)\[DifferentialD]\[Xi]2+...+(\[PartialD]fd/\[PartialD]\[Xi]D)\[DifferentialD]\[Xi]D},{Del[x1]\[Rule](\[PartialD]\[Xi]1/\[PartialD]f1)Del[\[Xi]1]+(\[PartialD]\[Xi]2/\[PartialD]f1)Del[\[Xi]2]+ ...+(\[PartialD]\[Xi]D/\[PartialD]f1)Del[\[Xi]D], Del[x2]\[Rule](\[PartialD]\[Xi]1/\[PartialD]f2)Del[\[Xi]1]+(\[PartialD]\[Xi]2/\[PartialD]f2)Del[\[Xi]2]+ ...+(\[PartialD]\[Xi]D/\[PartialD]f2)Del[\[Xi]D],..., Del[xd]\[Rule](\[PartialD]\[Xi]1/\[PartialD]fd)Del[\[Xi]1]+(\[PartialD]\[Xi]2/\[PartialD]fd)Del[\[Xi]2]+ ...+(\[PartialD]\[Xi]D/\[PartialD]fd)Del[\[Xi]D]}]. The main difference between (I.1) and (I.2) is that (I.2) allows for new coordinates on the right hand side of the transformation rules.
+(II) CoordinateTransformation[mt_Tensor, {x1\[Rule]f1[x1,x2,x3,...,xd],x2\[Rule]f2[x1,x2,x3,...,xd], x3\[Rule]f3[x1,x2,x3,...,xd],...,xd\[Rule]fd[x1,x2,x3,...,xd]},Indices\[Rule]{},TensorName\[Rule]tn,StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op,MetricOperator\[Rule]Simplify,ChristoffelOperator\[Rule]Simplify,RiemannOperator\[Rule]Simplify,RicciOperator\[Rule]Simplify, RicciScalarOperator\[Rule]Simplify] or CoordinateTransformation[mt_Tensor, {x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D], ...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]}, {\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]D}, Indices\[Rule]{}, TensorName\[Rule]tn, StartIndex\[Rule]si, TooltipStyle\[Rule]{}, TooltipDisplay\[Rule]Null, CoordinateTransformationOperator\[Rule]op, MetricOperator\[Rule]Simplify, ChristoffelOperator\[Rule]Simplify, RiemannOperator\[Rule]Simplify,RicciOperator\[Rule]Simplify, RicciScalarOperator\[Rule]Simplify], where mt is a Tensor of TensorType \"Metric\", returns mt coordinate-transformed according to the specified rules. Note that the index names and placement (i.e., down-down or up-up) are preserved, if the optional Indices are not specified. If the optional Indices are specified, they would be moved accordingly. The geometry-related MetricOperator, ChristoffelOperator, etc. have the same meaning as in Metric. The optional CoordinateTransformationOperator\[Rule]CTop, with default CTop = Simplify, means CTop will be applied to the objects occuring within mt whenever these geometrical objects related operators are set as Simplify. If a particular operator and CoordinateTransformationOperator are both not Simplify, the former will be applied. The optional StartIndex\[Rule]si has a default given by that in mt. Note that the ordering of the new coordinates implied by {\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D} is significant.
+(III) CoordinateTransformation[t_Tensor,{x1\[Rule]f1[x1,x2,x3,...,xd],x2\[Rule]f2[x1,x2,x3,...,xd],x3\[Rule]f3[x1,x2,x3,...,xd],...,xd\[Rule]fd[x1,x2,x3,...,xd]},Indices\[Rule]{},TensorName\[Rule]tn,StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op] or CoordinateTransformation[t_Tensor,{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d]},{\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]d},Indices\[Rule]{},TensorName\[Rule]tn,StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op], where t is a Tensor object that is neither Metric nor Christoffel, returns t coordinate-transformed according to the specified rules. Note that the index names and placements are preserved, if the optional Indices are not specified. If the optional Indices are specified, they would then be moved accordingly. The default value of the optional StartIndex\[Rule]si is given by that in t. The CoordinateTransformationOperator\[Rule]CTop is optional, with the default CTop = Simplify. The ordering of the new coordinates implied by {\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d} is significant; and the new coordinate system must have the same dimension as the old one. OverHat Indices, i.e., indices in the orthonormal basis, will not be transformed. 
+(IV) CoordinateTransformation[t_Tensor,{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]},{\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D},mt_Tensor,Indices\[Rule]{},TensorName\[Rule]tn, StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op], where D<d, t is a Tensor object that is neither a Metric nor a Christoffel, returns the 'induced' Tensor t coordinate-transformed according to the specified rules. In contrast to the above same-dimension transformations, here a d-dimensional 'ambient space' metric Tensor mt is required. Note that the index names and placements are preserved, if the optional Indices is not specified. If the optional Indices are specified, the indices would be moved accordingly. StartIndex\[Rule]si is optional, with default given by that in t. The CoordinateTransformationOperator\[Rule]CTop is optional, with the default CTop = Simplify. The ordering of the new coordinates implied by {\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]d} is significant. OverHat Indices, i.e., indices in the orthonormal basis, will not be transformed.
+(V) CoordinateTransformation[t_Tensor,{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D]},{\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]D},Indices\[Rule]{},TensorName\[Rule]tn, StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op], where D<d, but t has only downstairs Indices, returns t coordinate-transformed according to the specified rules \[LongDash] i.e., the 'ambient space' the mt in (IV) is not required. The optional Indices\[Rule]idx cannot contain any upper indices.
+(VI) CoordinateTransformation[chr_Tensor,{x1\[Rule]f1[x1,x2,x3,...,xd],x2\[Rule]f2[x1,x2,x3,...,xd],x3\[Rule]f3[x1,x2,x3,...,xd],...,xd\[Rule]fd[x1,x2,x3,...,xd]},Indices\[Rule]{},TensorName\[Rule]tn,StartIndex\[Rule]si,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op] or CoordinateTransformation[t_Tensor,{x1\[Rule]f1[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],x2\[Rule]f2[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],x3\[Rule]f3[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d],...,xd\[Rule]fd[\[Xi]1,\[Xi]2,\[Xi]3,...,\[Xi]d]},{\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]d},Indices\[Rule]{},TensorName\[Rule]tn,StartIndex\[Rule]si, TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null,CoordinateTransformationOperator\[Rule]op], where chr is a Tensor with TensorType\[Rule]Chistoffel, returns the same chr except coordinate-transformed according to the specified rules. Note that the index names and placements are preserved. Even if the optional Indices are specified, note that changing their positions is not allowed. The CoordinateTransformationOperator\[Rule]CTop is optional, with the default CTop = Simplify. The optional StartIndex\[Rule]si has default given by that in chr. The ordering of the new coordinates implied by {\[Xi]1,\[Xi]2,\[Xi]3, ...,\[Xi]d} is significant; and the old versus new coordinate systems must have same dimension.";
+
+
+(* ::Input::Initialization:: *)
+ZeroTensor::usage="ZeroTensor[indices_List,Coordinates\[Rule]coord_List, TensorName->\"0\", StartIndex\[Rule]0, TooltipDisplay\[Rule]Null, TensorType\[Rule]Null,TooltipStyle\[Rule]{}, TensorOperator\[Rule] Simplify,TensorAssumption\[Rule]{}] returns a rank-Length[indices] and Length[coord]-dimensional zero Tensor object. The default TensorName is \"0\".";
+
+
+(* ::Input::Initialization:: *)
+ZeroTensorQOperator::usage="ZeroTensorQOperator\[Rule]op is an optional argument of ZeroTensorQ, where the default op is Simplify.";
+
+
+(* ::Input::Initialization:: *)
+TensorEquations::usage="(I) TensorEquations[LHSt,RHSt,OutputForm\[Rule]List] returns some form of the tensor equation LHSt==RHSt. If OutputForm \[Rule] List is specified (the default setting), the output would be {idx_List,eqns}. The idx is the List of free indices of LHSt, assumed to be the same as those of RHSt; whereas eqns will be the Table generated from LHSt==RHSt by running over their free indices in the order specified by idx. If OutputForm \[Rule] Tensor is chosen, a Tensor object would be returned, with its TensorComponents given by the same Table generated by the OutputForm \[Rule] List option above. If OutputForm \[Rule] Flatten is chosen, the output would be Flatten and DeleteDuplicates applied to the same Table generated by the OutputForm \[Rule] List option above. If OutputForm \[Rule] BooleanQ is chosen, the output will be True if LHSt==RHSt is True for every component; otherwise the output will be False.
+(II) TensorEquations[t,0] generates a List of the tensor equation t==0, with Flatten and DeleteDuplicates applied.
+(III) TensorEquations[LHSt==RHSt] is equivalent to TensorEquations[LHSt,RHSt].
+(IV) TensorEquations[{LHSt==RHSt,..}] is equivalent to {TensorEquations[LHSt==RHSt],..}";
+
+
+(* ::Input::Initialization:: *)
+TensorDivision::usage="TensorDivision[LHSt,RHSt,TensorDivisionOperator\[Rule]Simplify] returns a Tensor or a regular scalar expression, whose components are the result of dividing LHSt by RHSt component-by-component, followed by acting op. The default option for the TensorDivisionOperator is Simplify. If the ratio of all the nonzero TensorComponents of LHSt to the those of RHSt is the same factor \[Kappa], this \[Kappa] is returned as output instead.";
+
+
+(* ::Input::Initialization:: *)
+GeodesicSystem::usage="GeodesicSystem[\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor,AffineParameter\[Rule]Unique[\[Lambda]1],NonAffineParameter\[Rule]Unique[t1]] returns the affine parameter Lagrangian (1/2)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)) for geodesic motion, with optional AffineParameter\[Rule]\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\), the non-affine parameter Lagrangian (\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))\!\(\*SuperscriptBox[\()\), \(1/2\)]\) for geodesic motion, with optional NonAffineParameter\[Rule]\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\",\",\nFontSlant->\"Italic\"]\) and the geodesic equations in both affine and non-affine parameter forms.";
+GeodesicLagrangians::usage="GeodesicLagrangians[m_Tensor,AffineParameter\[Rule]Unique[\[Lambda]1],NonAffineParameter\[Rule]Unique[t1]] returns the affine parameter Lagrangian (1/2)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)) for geodesic motion, with optional AffineParameter\[Rule]\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\), and the non-affine parameter Lagrangian (\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))\!\(\*SuperscriptBox[\()\), \(1/2\)]\) for geodesic motion, with optional NonAffineParameter\[Rule]\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\). It does what GeodesicSystem does, but does not output the geodesic equations themselves.";
+GeodesicHamiltonianDynamics::usage="GeodesicHamiltonianDynamics[\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor,{\!\(\*
+StyleBox[\"z1\",\nFontSlant->\"Italic\"]\)\[Rule]\!\(\*
+StyleBox[\"p1\",\nFontSlant->\"Italic\"]\),\!\(\*
+StyleBox[\"z2\",\nFontSlant->\"Italic\"]\)\[Rule]\!\(\*
+StyleBox[\"p2\",\nFontSlant->\"Italic\"]\),...},\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)] returns the affine parameter Hamiltonian (1/2)\!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)]]\!\(\*SubscriptBox[\(p\), \(\[Mu]\)]\)[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)]\!\(\*SubscriptBox[\(p\), \(\[Nu]\)]\)[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)] 
+	and the geodesic equations {\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)==\!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)\!\(\*SubscriptBox[\(p\), \(\[Nu]\)]\),\!\(\*SubscriptBox[\(dp\), \(\[Mu]\)]\)=-\[PartialD]H/\[PartialD]\!\(\*SuperscriptBox[\(z\), \(\[Mu]\)]\)}.";
+
+
+(* ::Input::Initialization:: *)
+GeodesicSystemVariationalMethods::usage="GeodesicSystemVariationalMethods[\*
+StyleBox[\(\!\(\*
+StyleBox[\"m\",\nFontSlant->\"Italic\"]\)_Tensor\)],AffineParameter\[Rule]Unique[\[Lambda]1],NonAffineParameter\[Rule]Unique[t1]] returns the affine parameter Lagrangian (1/2)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\)) for geodesic motion, with optional AffineParameter\[Rule]\!\(\*
+StyleBox[\"\[Lambda]\",\nFontSlant->\"Italic\"]\), the non-affine parameter Lagrangian (\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\))\!\(\*SuperscriptBox[\()\), \(1/2\)]\) for geodesic motion, with optional NonAffineParameter\[Rule]\!\(\*
+StyleBox[\"t\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\",\",\nFontSlant->\"Italic\"]\) and the geodesic equations in both affine and non-affine parameter forms.";
+
+
+(* ::Input::Initialization:: *)
+SphericalHarmonicYTensor::usage="(I) SphericalHarmonicYTensor[l,m,\[Theta]_Symbol,\[Phi]_Symbol,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] returns a scalar Tensor with TensorComponents given by SphericalHarmonicY[l, m, \[Theta], \[Phi]], where the angular coordinates {\[Theta],\[Phi]} parametrize the 2-sphere geometry (\[DifferentialD]\[ScriptL]\!\(\*SuperscriptBox[\()\), \(2\)]\)=(\[DifferentialD]\[Theta]\!\(\*SuperscriptBox[\()\), \(2\)]\)+Sin[\[Theta]\!\(\*SuperscriptBox[\(]\), \(2\)]\)(\[DifferentialD]\[Phi]\!\(\*SuperscriptBox[\()\), \(2\)]\).
+(II) SphericalHarmonicYTensor[l,m,g_Tensor]), TooltipStyle\[Rule]{}, TooltipDisplay\[Rule]Null] returns the same scalar Tensor as in (I), except the coordinates are extracted from Metric Tensor g.";
+
+
+(* ::Input::Initialization:: *)
+VectorSphericalHarmonic::usage="(I) VectorSphericalHarmonic[a, l, m, \[Theta]_Symbol, \[Phi]_Symbol, VectorType,Normalize\[Rule]True,TooltipStyle\[Rule]{},TooltipDisplay\[Rule]Null] returns a rank-1 Tensor with TensorComponents given by the vector spherical harmonics \!\(\*SubscriptBox[\(\[Del]\), \(a\)]\)\!\(\*SuperscriptBox[SubscriptBox[\(Y\), \(\[ScriptL]\)], \(m\)]\)[\[Theta],\[Phi]] (\"Gradient\") or \!\(\*SuperscriptBox[OverscriptBox[\(\[Epsilon]\), \(~\)], \(a\\\ b\)]\)\!\(\*SubscriptBox[\(\[Del]\), \(b\)]\)\!\(\*SuperscriptBox[SubscriptBox[\(Y\), \(\[ScriptL]\)], \(m\)]\)[\[Theta],\[Phi]] (\"Curl\"), where \!\(\*SuperscriptBox[SubscriptBox[\(Y\), \(\[ScriptL]\)], \(m\)]\)[\[Theta],\[Phi]] = SphericalHarmonicY[l, m, \[Theta], \[Phi]]. The normalized versions are \!\(\*SubscriptBox[\(\[Del]\), \(a\)]\)\!\(\*SuperscriptBox[SubscriptBox[\(Y\), \(\[ScriptL]\)], \(m\)]\)[\[Theta],\[Phi]]/(\[ScriptL](\[ScriptL]+1)\!\(\*SuperscriptBox[\()\), \(1/2\)]\) and \!\(\*SuperscriptBox[OverscriptBox[\(\[Epsilon]\), \(~\)], \(a\\\ b\)]\)\!\(\*SubscriptBox[\(\[Del]\), \(b\)]\)\!\(\*SuperscriptBox[SubscriptBox[\(Y\), \(\[ScriptL]\)], \(m\)]\)[\[Theta],\[Phi]]/(\[ScriptL](\[ScriptL]+1)\!\(\*SuperscriptBox[\()\), \(1/2\)]\). The angular coordinates {\[Theta],\[Phi]} parametrize the 2-sphere geometry (\[DifferentialD]\[ScriptL]\!\(\*SuperscriptBox[\()\), \(2\)]\)=(\[DifferentialD]\[Theta]\!\(\*SuperscriptBox[\()\), \(2\)]\)+Sin[\[Theta]\!\(\*SuperscriptBox[\(]\), \(2\)]\)(\[DifferentialD]\[Phi]\!\(\*SuperscriptBox[\()\), \(2\)]\). The output index a can be a SuperMinus or SubMinus. The two types of vector harmonics are specified with VectorType\[Rule]\"Gradient\" or VectorType\[Rule]\"Curl\". The optional argument Normalize\[Rule]True (which is the default) would indicate the TensorComponents must be normalized whereas Normalize\[Rule]False would return the un-normalized ones without the (\[ScriptL](\[ScriptL]+1)\!\(\*SuperscriptBox[\()\), \(\(-1\)/2\)]\) factor.
+(II) VectorSphericalHarmonic[a, l, m, g_Tensor, VectorType, Normalize\[Rule]True, TooltipStyle\[Rule]{}, TooltipDisplay\[Rule]Null] returns the same rank-1 Tensor as in (I), except its coordinates are extracted from Metric Tensor g.
+";
+
+
+(* ::Input::Initialization:: *)
+ElectromagneticStressEnergyTensor::usage="ElectromagneticStressEnergyTensor[\[Mu],\[Nu],F_Tensor,m_Tensor,MetricSignature\[Rule]\"MostlyMinus\"] takes in the metric Tensor m (its TensorType must be Metric) and a Faraday Tensor F. It returns the stress\[Dash]energy tensor \!\(\*SubscriptBox[\(T\), \(\[Mu]\[Nu]\)]\) = \[Sigma]g(-\!\(\*SuperscriptBox[SubscriptBox[\(F\), \(\[Mu]\)], \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(F\), \(\[Nu]\[Sigma]\)]\) + (1/4) \!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) \!\(\*SubscriptBox[\(F\), \(\[Sigma]\[Rho]\)]\)\!\(\*SuperscriptBox[\(F\), \(\[Sigma]\[Rho]\)]\)), where \[Sigma]g = +1 for the MostlyMinus signature and \[Sigma]g = -1 for MostlyPlus. The input indices \[Mu] and \[Nu] can be in any position; i.e., their Head can be either SuperMinus or SubMinus. MetricSignature \[Rule] op_String specifies whether the user is employing the \"MostlyMinus\" or \"MostlyPlus\" metric signature. In (1+1) spacetime dimensions \"MostlyMinus\" means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[1,-1] and \"MostlyPlus\" means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[-1,1]. The default is \"MostlyMinus\".";
+
+
+(* ::Input::Initialization:: *)
 MetricDeterminant::usage="MetricDeterminant is an Option within a Tensor of type Metric whose OptionValue is the determinant of the metric in use.";
-Determinant::usage="Determinant[MetricT] takes in a Tensor of type Metric and returns the determinant of the metric."
 RiemannComponents::usage="RiemannComponents refer to the components of the Riemann curvature tensor.";
 RicciComponents::usage="RicciComponents refer to the components of the Ricci curvature tensor.";
 RicciScalarInvariant::usage="RicciScalarCurvature is the Option occuring within a Tensor of Metric type, whose OptionValue gives the rule referring to the Ricci scalar.";
 ChristoffelComponents::usage="ChristoffelComponents refer to the components of the Christoffel symbols.";
-StartIndex::usage="StartIndex is the Option occuring within Tensor that tells TensoriaCalc which Integer to start counting indices from. For example, spacetime indices usually have StartIndex \[Rule] 0 whereas purely spatial indices usually have StartIndex \[Rule] 1.";
-Christoffel::usage="Christoffel[SuperMinus[\[Mu]_Integer],SubMinus[\[Alpha]_Integer],SubMinus[\[Beta]_Intger],M_Tensor] takes in the metric Tensor M (TensorType must be Metric) and returns a Tensor containing the components of the Christoffel symbol, if indices are Symbols. If indices are Integers or if indices are the coordinates, the specified component will be returned.";
-TooltipDisplay::usage="TooltipDisplay is an Option occuring within a non-Metric type Tensor which tells TensoriaCalc what to display when the user hovers her mouse over the Tensor.";
-ChristoffelOperator::usage="ChristoffelOperator \[Rule] Op is an Option when using Metric. It tells TensoriaCalc to apply Op when calculating the components of the Christoffel symbols, for example FullSimplify the resulting expression.";
-RiemannOperator::usage="RiemannOperator \[Rule] Op is an Option when using Metric. It tells TensoriaCalc to apply Op when calculating the components of the Riemann curvature tensor, for example FullSimplify the resulting expression.";
-RicciOperator::usage="RicciOperator \[Rule] Op is an Option when using Metric. It tells TensoriaCalc to apply Op when calculating the components of the Ricci curvature tensor, for example FullSimplify the resulting expression.";
-RicciScalarOperator::usage="RicciScalarOperator \[Rule] Op is an Option when using Metric. It tells TensoriaCalc to apply Op when calculating the components of the Ricci scalar, for example FullSimplify the resulting expression.";
-CovariantBox::usage="CovariantBox[X,MetricT] applies the operator \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\)\!\(\*SubscriptBox[\(\[Del]\), \(\[Nu]\)]\) on X using the metric Tensor MetricT. Currently, only the scalar operator is supported, i.e. X cannot contain Tensor objects and CovariantBox[X,MetricT] \[Congruent] (|det g|\!\(\*SuperscriptBox[\()\), \(1/2\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\)((|det g|\!\(\*SuperscriptBox[\()\), \(1/2\)]\) \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) \!\(\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\)X).";
-CoordinateTransformation::usage="(I) CoordinateTransformation[{x\[Rule]f1[x,y,z,...], y\[Rule]f2[x,y,z,...], z\[Rule]f3[x,y,z,...], ...}] returns the coordinate transformation and the associated Jacobian for the infinitesimals, i.e. the output is Union[{x\[Rule]f1[x,y,z,...], y\[Rule]f2[x,y,z,...], z\[Rule]f3[x,y,z,...], ...}, {dx\[Rule](\[PartialD]f1/\[PartialD]x)\[DifferentialD]x+(\[PartialD]f1/\[PartialD]y)\[DifferentialD]y+ ..., dy\[Rule](\[PartialD]f2/\[PartialD]x)\[DifferentialD]x+(\[PartialD]f2/\[PartialD]y)\[DifferentialD]y+...}]. 
-	(II) CoordinateTransformation[{x\[Rule]f1[p,q,r,...], y\[Rule]f2[p,q,r,...], z\[Rule]f3[p,q,r,...], ...}, {p,q,r, ...}] returns the coordinate transformation and the associated Jacobian for the infinitesimals, i.e. the output is Union[{x\[Rule]f1[p,q,r,...], y\[Rule]f2[p,q,r,...], z\[Rule]f3[p,q,r,...], ...}, {dx\[Rule](\[PartialD]f1/\[PartialD]p)\[DifferentialD]p+(\[PartialD]f1/\[PartialD]q)\[DifferentialD]q+ ..., dy\[Rule](\[PartialD]f2/\[PartialD]p)\[DifferentialD]p+(\[PartialD]f2/\[PartialD]q)\[DifferentialD]q+...}]. The main difference between (I) and (II) is that (II) allows for new coordinate names on the right hand side of the rules; of course, that means one has to specify what the new coordinates are for (II).";
-GradientSquared::usage="GradientSquared[X,MetricT] computes \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\)X \!\(\*SubscriptBox[\(\[Del]\), \(\[Nu]\)]\)X using the metric Tensor MetricT. Currently, only the scalar operator is supported, i.e. X cannot contain Tensor objects.";
-PartialD::usage="PartialD[\!\(\*SubscriptBox[\(\[Mu]\), \(-\)]\),S_Tensor,MetricT_Tensor] (or PartialD[\!\(\*SuperscriptBox[\(\[Mu]\), \(-\)]\),S_Tensor,MetricT_Tensor]) returns a Tensor object with TensorComponents \!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\)TensorComponent[S] (or \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\)TensorComponent[S]), using the metric \!\(\*SuperscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) of MetricT.";
-CovariantD::usage="CovariantD[\!\(\*SubscriptBox[\(\[Mu]\), \(-\)]\),S_Tensor,MetricT_Tensor] (or CovariantD[\!\(\*SuperscriptBox[\(\[Mu]\), \(-\)]\),S_,MetricT_Tensor]) returns a Tensor object with TensorComponents containing the metric-compatible covariant derivative \!\(\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\) (or \!\(\*SuperscriptBox[\(\[Del]\), \(\[Mu]\)]\)) acting on S, using the metric MetricT.";
-ContractTensors::usage="ContractTensors[Times[tt__Tensor]] \[LongDash] not to be confused with Mathematica's own TensorContract \[LongDash] returns a Tensor whose TensorComponents is built from contracting the sequence of Tensors in tt, i.e., by forming a tensor product out of their TensorComponents, and summing over repeated indices. All other attributes of the output Tensor are inherited from the first Tensor of the sequence in tt.";
-SwapIndices::usage="SwapIndices[tt_Tensor,idx_List] returns the Tensor object tt, with its un-UnderBarred indices (say, \!\(\*SubscriptBox[\(i\), \(1\)]\)...\!\(\*SubscriptBox[\(i\), \(n\)]\)) re-arranged into idx; the TensorComponents of tt are re-arranged accordingly. When specifying idx, remember not to include the UnderBarred Indices of tt.";
-TensorIsZero::usage="TensorIsZero[tt_Tensor] returns True if every component of the Tensor object tt is zero and False otherwise.";
-MoveIndices::usage="(I) MoveIndices[tt_Tensor,idx_List,m_Tensor] returns the Tensor tt with its indices raised/lowered by specifying idx, using the Metric Tensor m. Suppose tt has indices {\!\(\*FormBox[SubscriptBox[\(\[Alpha]\), \(-\)],
-TraditionalForm]\), \!\(\*FormBox[SuperscriptBox[\(\[Beta]\), \(-\)],
-TraditionalForm]\) ,\!\(\*FormBox[SuperscriptBox[\(\[Mu]\), \(-\)],
-TraditionalForm]\), \!\(\*FormBox[SubscriptBox[\(\[Nu]\), \(-\)],
-TraditionalForm]\)} and \[Alpha] and \[Mu] need to be raised and lowered respectively, then do MoveIndices[tt_Tensor,{\!\(\*FormBox[\(\*SuperscriptBox[\(\[Alpha]\), \(-\)], \*SubscriptBox[\(\[Mu]\), \(-\)]\),
-TraditionalForm]\)},m]. (II) MoveIndices[tt_Tensor,m_Tensor] essentially returns the Tensor tt[\[Alpha],\[Beta],...] where the indices \[Alpha],\[Beta],... can be specified arbitrarily \[LongDash] either up or down. If the specified indices were not in the same up/down position as the input tt, the indices are automatically moved using the Metric Tensor m.";
-RaiseAllIndices::usage="RaiseAllIndices[tt_Tensor,m_Tensor] returns the Tensor tt with all its indices raised using the Metric Tensor m.";
-LowerAllIndices::usage="LowerAllIndices[tt_Tensor,m_Tensor] returns the Tensor tt with all its indices lowered using the Metric Tensor m.";
-UniqueIndices::usage="UniqueIndices[tt_Tensor] returns the Tensor tt with its indices replaced with Unique ones.";
-GeodesicSystem::usage="GeodesicSystem[MetricT_Tensor,AffineParameter\[Rule]\[Lambda],NonAffineParameter\[Rule]t] returns the affine parameter Lagrangian (1/2)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\[Lambda]]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\[Lambda])(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\[Lambda]) for geodesic motion, the non-affine parameter Lagrangian (\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[t]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/dt)(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/dt)\!\(\*SuperscriptBox[\()\), \(1/2\)]\) for geodesic motion, and the geodesic equations in both affine and non-affine parameter forms.";
-GeodesicLagrangians::usage="GeodesicLagrangians[MetricT_Tensor,AffineParameter\[Rule]\[Lambda],NonAffineParameter\[Rule]t] returns the affine parameter Lagrangian (1/2)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[\[Lambda]]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/d\[Lambda])(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/d\[Lambda]) for geodesic motion, and the non-affine parameter Lagrangian (\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)[z[t]](\!\(\*SuperscriptBox[\(dz\), \(\[Mu]\)]\)/dt)(\!\(\*SuperscriptBox[\(dz\), \(\[Nu]\)]\)/dt)\!\(\*SuperscriptBox[\()\), \(1/2\)]\) for geodesic motion. It does what GeodesicSystem does, but does not output the geodesic equations themselves.";
-ToTensor::usage="ToTensor[exp,{\!\(\*
-StyleBox[\"indices\",\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)},components,{coords},TensorType->name,StartIndex->si_Integer] returns Tensor[TensorName\[Rule]exp, TensorType\[Rule]name, Indices\[Rule]{indices}, StartIndex\[Rule]si, CoordinateSystem\[Rule]{coords},TensorComponents\[Rule]components].";
-LieDerivative::usage="LieDerivative[\[Xi]_Tensor,m_Tensor] returns the Lie derivative of the Tensor m with respect to the rank-1 Tensor \[Xi]. Currently, LieDerivative only takes in Metric m; i.e., it only computes the Lie derivatives of metrics: \!\(\*SubscriptBox[\(\[Sterling]\), \(\[Xi]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) = \!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\)+\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Nu]\[Sigma]\)]\)+\!\(\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]\)\!\(\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)\!\(\*SubscriptBox[\(g\), \(\[Mu]\[Sigma]\)]\).";
+
+
+(* ::Input::Initialization:: *)
+OrthonormalBasis::usage="";
+CoordinateBasis::usage="";
+
+
+(* ::Input::Initialization:: *)
+OperatorProductRule::usage="";
+TensorComponentsManipulation::usage="";
+ExtractFunction::usage="";
+EndowFunction::usage="";
+OperatorDistribute::usage="";
 
 
 (* ::Input::Initialization:: *)
 (* 4D Ideal MHD Functions *)
-MHDSystem::usage="MHDSystem[{\[CapitalPhi]1_,\[CapitalPhi]2_,\[CapitalPhi]3_}, \[Rho]0_Function, m_Tensor, MetricSignature \[Rule] s_String, MHDOperator \[Rule] op] returns an object, with Head MHDSystem, that stores all relevant information described by the 3 scalar fields {\[CapitalPhi]1,\[CapitalPhi]2,\[CapitalPhi]3} and the plasma energy density (pure function) \[Rho]0. Note that MetricSignature and MHDOperator are optional; s = `Mostly minus' tells TensoriaCalc the user employs \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) = diag[1,-1,...,-1] and s = `Mostly plus' tells TensoriaCalc the user employs \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) = diag[-1,+1,...,+1]; the default values are s = `Mostly minus' and op = Simplify.";
+MHDSystem::usage="MHDSystem[{\[CapitalPhi]1_,\[CapitalPhi]2_,\[CapitalPhi]3_}, \[Rho]0_Function, m_Tensor, MetricSignature \[Rule] s_String, MHDOperator \[Rule] op] returns an object, with Head MHDSystem, that stores all relevant information described by the 3 scalar fields {\[CapitalPhi]1,\[CapitalPhi]2,\[CapitalPhi]3} and the plasma energy density (pure function) \[Rho]0. Note that MetricSignature and MHDOperator are optional; s = \"MostlyMinus\" tells TensoriaCalc the user employs \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) = diag[1,-1,...,-1] and s = \"MostlyPlus\" tells TensoriaCalc the user employs \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) = diag[-1,+1,...,+1]; the default values are s = \"MostlyMinus\" and op = Simplify.";
 MHDScalar::usage="(\!\(\*
 StyleBox[\"I\",\nFontColor->RGBColor[0, 0, 1]]\)) MHDScalar[1,mm_MHDSystem], MHDScalar[2,mm_MHDSystem], and MHDScalar[3,mm_MHDSystem] returns, respectively, the 1st, 2nd, and 3rd fundamental scalar fields of the MHDSystem mm. (\!\(\*
 StyleBox[\"II\",\nFontColor->RGBColor[0, 0, 1]]\)) MHDScalar[\[Mu]T_,1,mm_MHDSystem], MHDScalar[\[Mu]T_,2,mm_MHDSystem], and MHDScalar[\[Mu]T_,3,mm_MHDSystem] returns, respectively, the Tensor object describing \[Del]\!\(\*SuperscriptBox[\(\[CapitalPhi]\), \(1\)]\), \[Del]\!\(\*SuperscriptBox[\(\[CapitalPhi]\), \(2\)]\), and \[Del]\!\(\*SuperscriptBox[\(\[CapitalPhi]\), \(3\)]\), with index \[Mu]T.";
@@ -194,24 +778,45 @@ MHDEnergyMomentumShearStress::usage="MHDEnergyMomentumShearStress[\[Mu]T_,\[Nu]T
 MHDMetricTensor::usage="MHDMetricTensor \[Rule] \!\(\*SubscriptBox[
 StyleBox[\"g\",\nFontSlant->\"Italic\"], \(\[Mu]\[Nu]\)]\) is one of the arguments of an MHDSystem object. It contains the rank-2 Tensor object describing background spacetime geometry of the MHDSystem.";
 MHDOperator::usage="MHDOperator \[Rule] op is an optional argument when entering a MHDSystem. Default value for op is Simplify.";
-MetricSignature::usage="MetricSignature \[Rule] op_String specifies whether the user is employing the `Mostly minus' or `Mostly plus' metric signature; in (1+1) spacetime dimensions `Mostly minus' means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[1,-1] and `Mostly plus' means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[-1,1]. MetricSignature occurs, for e.g., as an Optional argument in MHDSystem. Whenever relevant, the default is `Mostly minus'.";
+MetricSignature::usage="MetricSignature \[Rule] op_String specifies whether the user is employing the `MostlyMinus' or `MostlyPlus' metric signature; in (1+1) spacetime dimensions `MostlyMinus' means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[1,-1] and `MostlyPlus' means \!\(\*SubscriptBox[\(\[Eta]\), \(\[Mu]\[Nu]\)]\) \[Congruent] diag[-1,1]. MetricSignature occurs, for e.g., as an Optional argument in MHDSystem. Whenever relevant, the default is `MostlyMinus'.";
 
 
 (* ::Input::Initialization:: *)
 (* Tensor properties/options *)
 SetAttributes[Tensor,Orderless];
 SetAttributes[MHDSystem,Orderless];
-Options[Metric]={CoordinateSystem->{},TensorName->"\!\(\*
-StyleBox[\"g\",\nFontSlant->\"Italic\"]\)",StartIndex->0,ChristoffelOperator->Simplify,RiemannOperator->Simplify,RicciOperator->Simplify,RicciScalarOperator->Simplify};
-Options[Einstein]={EinsteinOperator->Simplify};
-Options[Weyl]={WeylOperator->Simplify};
-Options[NonMetricTensor]={TensorName->Unique[\[CapitalTau]],StartIndex->0,TooltipDisplay->Null,TensorType->Null};
-Options[MHDSystem]={MHDOperator->Simplify,MetricSignature->"Mostly minus"};
-Options[GeodesicSystem]={AffineParameter->Unique[\[CapitalTHacek]],NonAffineParameter->Unique[\[CapitalLSlash]]};
-Options[GeodesicLagrangians]={AffineParameter->Unique[\[CapitalTHacek]],NonAffineParameter->Unique[\[CapitalLSlash]]};
-Options[ToTensor]={TensorType->"None",StartIndex->0};
+(*SetAttributes[TensorPlus,Orderless];
+SetAttributes[TensorPlusName,Orderless];*)
+Options[Metric]={Coordinates->{},TensorName->"\!\(\*
+StyleBox[\"g\",\nFontSlant->\"Italic\"]\)",StartIndex->0,MetricOperator->Simplify,ChristoffelOperator->Simplify,RiemannOperator->Simplify,RicciOperator->Simplify,RicciScalarOperator->Simplify,TooltipStyle->{},TooltipDisplay->Null,FlatMetric->Null,OrthonormalFrameField->Null,InverseOrthonormalFrameField->Null,OrthonormalFrameFieldOperator->Simplify,OrthonormalFrameFieldIndices->Null,TensorOperator->Simplify,TensorAssumption-> {}};
+Options[Christoffel]={TooltipStyle->{},TooltipDisplay->TensorComponents};
+Options[Riemann]={TooltipStyle->{},TooltipDisplay->Null};
+Options[Ricci]={TooltipStyle->{},TooltipDisplay->Null};
+Options[Einstein]={EinsteinOperator->Simplify,TooltipStyle->{},TooltipDisplay->Null};
+Options[Weyl]={WeylOperator->Simplify,TooltipStyle->{},TooltipDisplay->Null};
+Options[OrthonormalFrameField]={OrthonormalFrameFieldOperator->Simplify,OrthonormalFrameField->Null,InverseOrthonormalFrameField->Null,OrthonormalFrameFieldIndices->Null,FlatMetric->Null,OutputForm->Metric};Options[NonMetricTensor]={Coordinates->{},StartIndex->0,TooltipDisplay->Null,TensorType->Null,TooltipStyle->{},TensorOperator-> Simplify,TensorAssumption-> {}};
+Options[MHDSystem]={MHDOperator->Simplify,MetricSignature->"MostlyMinus"};
+Options[GeodesicSystem]={AffineParameter->Unique[\[Lambda]1],NonAffineParameter->Unique[t1]};
+Options[GeodesicSystemVariationalMethods]={AffineParameter->Unique[\[Lambda]1],NonAffineParameter->Unique[t1]};
+Options[GeodesicLagrangians]={AffineParameter->Unique[\[Lambda]1],NonAffineParameter->Unique[t1]};
+Options[CoordinateTransformation]={CoordinateTransformationOperator->Simplify,StartIndex->\[Alpha]\[Beta]\[Gamma]\[Theta]\[Phi],Indices->{},TensorName->1234,TooltipStyle->{},TooltipDisplay->Null,MetricOperator->Simplify,ChristoffelOperator->Simplify,RiemannOperator->Simplify,RicciOperator->Simplify,RicciScalarOperator->Simplify};
+Options[LieD]={LieDerivativeOperator->Simplify,TooltipStyle->{},TooltipDisplay->Null,Indices->Null};
+Options[LieBracket]={LieDerivativeOperator->Simplify,LieBracketOperator->Simplify,TooltipStyle->{},TooltipDisplay->Null,Indices->Null};
+Options[SphericalHarmonicYTensor]={TooltipStyle->{},TooltipDisplay->Null};
+Options[VectorSphericalHarmonic]={Normalize-> True,TooltipStyle->{},TooltipDisplay->Null};
+Options[SymmetrizeIndices]={SymmetrizeIndicesOperator->(#&)};
+Options[AntiSymmetrizeIndices]={AntiSymmetrizeIndicesOperator->(#&)};
+Options[ZeroTensor]={Coordinates->{},TensorName->"0",StartIndex->0,TooltipDisplay->Null,TensorType->Null,TooltipStyle->{},TensorOperator-> Simplify,TensorAssumption-> {}};
+Options[ZeroTensorQ]={ZeroTensorQOperator-> Simplify};
+Options[TensorDivision]={TensorDivisionOperator-> Simplify};
+Options[PotentialForm]={TensorName->"\!\(\*
+StyleBox[\"\[Beta]\",\nFontSlant->\"Italic\"]\)",StartingPoint->Null,IntegrationVariable->Unique[\[Lambda]1],TooltipDisplay->Null};
 (* MMA Packages *)
 Needs["VariationalMethods`"];
+Options[ToTensorComponents]={Coordinates-> {}};
+Options[ElectromagneticStressEnergyTensor]={MetricSignature->"MostlyMinus"};
+Options[OrthonormalFrameFieldQ]={OutputForm->BooleanQ};
+Options[TensorEquations]={OutputForm->List};
 
 
 (* ::Input::Initialization:: *)
@@ -220,53 +825,56 @@ Begin["`Private`"];
 
 (* ::Input::Initialization:: *)
 (* check if \[Mu] is an index *)
-CheckIndex[\[Mu]_]:=MatchQ[\[Mu],SuperMinus[_Integer]]||MatchQ[\[Mu],SuperMinus[_Symbol]]||MatchQ[\[Mu],SubMinus[_Integer]]||MatchQ[\[Mu],SubMinus[_Symbol]];
-(* \[Mu]^- gives +1 and Subscript[\[Mu], -] gives -1 *)
+TestIndices[\[Mu]_]:=MatchQ[\[Mu],SuperMinus[_Integer]|SuperMinus[_Symbol]|SubMinus[_Integer]|SubMinus[_Symbol]|SuperMinus[OverHat[_Integer]]|SuperMinus[OverHat[_Symbol]]|SubMinus[OverHat[_Integer]]|SubMinus[OverHat[_Symbol]]];
+(* Sgn[\[Mu]^-] gives +1 and Sgn[Subscript[\[Mu], -]] gives -1 provided they are actual indices -- as defined by TestIndices above *)
 Sgn[\[Mu]_]:=Which[
 (* upper index *)
 MatchQ[\[Mu],SuperMinus[_]],1,
 (* lower index *)
 MatchQ[\[Mu],SubMinus[_]],-1
-]/;CheckIndex[\[Mu]];
-(* \[Mu]^- or Subscript[\[Mu], -] returns \[Mu] *)
-IndexNumber[\[Mu]_]:=\[Mu][[1]]/;CheckIndex[\[Mu]];
-(* \[Mu]^- returns Column[{\[Mu],Null}], i.e. upper index *)
-(* Subscript[\[Mu], -] returns Column[{Null,\[Mu]}], i.e. lower index *)
+]/;TestIndices[\[Mu]];
+(* IndexNumber[\[Mu]^-] or IndexNumber[Subscript[\[Mu], -]] returns \[Mu] provided they are actual indices -- as defined by TestIndices above *)
+IndexNumber[\[Mu]_]:=\[Mu][[1]]/;TestIndices[\[Mu]];
+(* For any \[Mu] *)
+(* UpOrDown[\[Mu]^-] returns Column[{\[Mu],Null}], i.e. upper index *)
+(* UpOrDown[Subscript[\[Mu], -]] returns Column[{Null,\[Mu]}], i.e. lower index *)
 UpOrDown[\[Mu]_]:=Which[
 (* lower index *)
 MatchQ[\[Mu],SubMinus[_]],Column[{Null,\[Mu][[1]]}],
 (* upper index *)
 MatchQ[\[Mu],SuperMinus[_]],Column[{\[Mu][[1]],Null}]
 ];
-(* ReplaceIndex: takes in \[Nu] and (\[Mu]^- or Subscript[\[Mu], -]), and returns (\[Nu]^- or Subscript[\[Nu], -]) *)
-ReplaceIndex[\[Nu]_/;((Head[\[Nu]]===Symbol)||(Head[\[Nu]]===Integer)),\[Mu]_/;CheckIndex[\[Mu]]]:=Which[
-(* upper index *)
-MatchQ[\[Mu],SuperMinus[_]],SuperMinus[\[Nu]],
-(* lower index *)
-MatchQ[\[Mu],SubMinus[_]],SubMinus[\[Nu]]
-];
-(* returns #^- or Subscript[#, -] given coordinates cooo and StartIndex st, where # is the appropriate index number *)
+(* ReplaceIndex[\[Nu],Subscript[\[Mu], -]] returns Subscript[\[Nu], -] and ReplaceIndex[\[Nu],\[Mu]^-] returns \[Nu]^- provided (I) \[Nu] is either Integer or Symbol and (II) the \[Mu]'s are actual indices -- as defined by TestIndices above *)
+(* Here we don't need to specify SuperMinus (up) or SubMinus (down) on \[Nu]; next we will treat the case where \[Nu] is also an true index *)
+ReplaceIndex[\[Nu]_/;((Head[\[Nu]]===Symbol)||(Head[\[Nu]]===Integer)),\[Mu]_/;TestIndices[\[Mu]]]:=\[Nu]//\[Mu][[0]];
+(* ReplaceIndex[\[Nu],\[Mu]] takes in index \[Mu] and index \[Nu] and returns index \[Nu] but inheriting the position -- SuperMinus or SubMinus -- of \[Mu] *)
+(* Note: This takes care of OverHat indices *)
+ReplaceIndex[\[Nu]_/;TestIndices[\[Nu]],\[Mu]_/;TestIndices[\[Mu]]]:=(\[Nu][[1]]//\[Mu][[0]]);
+(* NumericIndex[\[Mu]I,cooo,st] returns #^- or Subscript[#, -] given coordinates cooo and StartIndex st, where # is the appropriate index number *)
 (* if the \[Mu]I is just a Symbol w/o any other meaning, it will be returned as is. *)
-NumericIndex[\[Mu]I_/;CheckIndex[\[Mu]I],cooo_List,st_]:=Which[
+(* if \[Mu]I is an OverHat index it will be returned as is. *)
+TestOverHatIndex[\[Mu]I_]:=(Head[\[Mu]I[[1]]]===OverHat)&&(TestIndices[\[Mu]I]);
+NumericIndex[\[Mu]I_/;TestIndices[\[Mu]I],cooo_List,st_Integer]:=Which[TestOverHatIndex[\[Mu]I],\[Mu]I,True,Which[
 (* if it's already an Integer then just return itself *)
 Head[\[Mu]I[[1]]]===Integer,\[Mu]I,
 (* if it is one of the coordinates return the Position *)
 Intersection[{\[Mu]I[[1]]},cooo]==={\[Mu]I[[1]]},
-	ReplaceIndex[((Flatten[Position[cooo,\[Mu]I[[1]]]])[[1]]-1+st),\[Mu]I],
+ReplaceIndex[((Flatten[Position[cooo,\[Mu]I[[1]]]])[[1]]-1+st),\[Mu]I],
 (* if neither then just return original stuff *)
 True,\[Mu]I
-];
+]]
+
 (* RaiseLower[\[Mu],\[Nu],\[Tau]] gives KroneckerDelta if \[Mu] and \[Nu] have the same Sgn and otherwise g^{\[Mu]\[Nu]} or g_{\[Mu]\[Nu]} *)
-(* right index is the index on the Tensor *)
-(* left index is what we want *)
+(* right index \[Nu] is the index on the Tensor *)
+(* left index \[Mu] is what we want *)
 (* if they are both upper or lower, then we need to return \[Delta] *)
 (* if ud, then return g^{-1} *)
 (* if du, then return g *)
-RaiseLower[\[Mu]_/;CheckIndex[\[Mu]],\[Nu]_/;CheckIndex[\[Nu]],\[Tau]_Tensor]/;((Cases[\[Tau],(TensorType->ttt_)->ttt]==={"Metric"})&&(MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SuperMinus[_],SuperMinus[_]}]||MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SubMinus[_],SubMinus[_]}])):=Module[
+RaiseLower[\[Mu]_/;TestIndices[\[Mu]],\[Nu]_/;TestIndices[\[Nu]],\[Tau]_Tensor]/;((TensorTypeNoPart[\[Tau]]==={"Metric"})&&(MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SuperMinus[_],SuperMinus[_]}]||MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SubMinus[_],SubMinus[_]}])):=Module[
 {si,MetricM},
-si=Cases[\[Tau],(StartIndex->ss_)->ss][[1]];
+si=StartIndex[\[Tau]];
 (* read in the metric *)
-MetricM=Cases[\[Tau],(TensorComponents->mm_)->mm][[1]];
+MetricM=TensorComponents[\[Tau]];
 Which[
 (* same sign *)
 Sgn[\[Mu]]Sgn[\[Nu]]===1,
@@ -277,10 +885,10 @@ Sgn[\[Mu]]Sgn[\[Nu]]===1,
 (Sgn[\[Mu]]===1)&&(Sgn[\[Nu]]===-1),
 	Which[
 		(* inverse metric *)
-		MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SuperMinus[_],SuperMinus[_]}],
+		MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SuperMinus[_],SuperMinus[_]}],
 		MetricM,
 		(* metric *)
-		MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SubMinus[_],SubMinus[_]}],
+		MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SubMinus[_],SubMinus[_]}],
 		Inverse[MetricM]
 	][[IndexNumber[\[Mu]]-si+1,IndexNumber[\[Nu]]-si+1]],
 (* \[Mu] negative, \[Nu] positive *)
@@ -289,44 +897,65 @@ Sgn[\[Mu]]Sgn[\[Nu]]===1,
 (Sgn[\[Mu]]==-1)&&(Sgn[\[Nu]]==1),
 	Which[
 		(* inverse metric *)
-		MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SuperMinus[_],SuperMinus[_]}],
+		MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SuperMinus[_],SuperMinus[_]}],
 		Inverse[MetricM],
 		(* metric *)
-		MatchQ[Flatten[Cases[\[Tau],(Indices->ttt_)->ttt]],{SubMinus[_],SubMinus[_]}],
+		MatchQ[Flatten[IndicesNoPart[\[Tau]]],{SubMinus[_],SubMinus[_]}],
 		MetricM
 	][[IndexNumber[\[Mu]]-si+1,IndexNumber[\[Nu]]-si+1]]
 ]
 ];
-(* CheckMetric checks that the metric expression *)
+(* TestQuadratic checks that the metric expression *)
 (* is quadratic in the differentials of the coordinates *)
-CheckMetric[ss_,cc_List]:=Module[
-{dx,\[Epsilon],out},
+(*`1` here refers to the first argument of the command invoking this error message*)
+TestQuadratic::TestQuadraticFalse="The expression form of metric `1` isn't quadratic or consistent with metric's indices.";
+
+TestQuadratic[ss_,cc_List,judge_Integer/;((judge===1)||(judge===-1))]:=Module[
+{dx,delx,newss,\[Epsilon],\[Epsilon]2,out},
 (* introduce power counting rule *)
 dx=((\[DifferentialD]#->\[Epsilon] \[DifferentialD]#)& /@cc);
-out=FullSimplify[D[(ss/.dx),\[Epsilon]]/(ss \[Epsilon]),{\[Epsilon]>0}];
+delx=((\[Del]#->\[Epsilon]2 \[Del]#)& /@cc);
+newss=(ss/.dx)/.delx;
 Which[
-	(* check if ss is quadratic in \[Epsilon] *)
-	out===2,True,
-	(* if ambiguous or false, return False *)
-	True,False
+(judge===-1),
+out=FullSimplify[D[newss,\[Epsilon]]/(ss \[Epsilon]),{\[Epsilon]>0}];
+If[(out===2),True,Message[TestQuadratic::TestQuadraticFalse,ss];False],
+(judge===+1),
+out=FullSimplify[D[newss,\[Epsilon]2]/(ss \[Epsilon]2),{\[Epsilon]2>0}];
+If[(out===2),True,Message[TestQuadratic::TestQuadraticFalse,ss];False]
 ]
 ];
-(* CheckMetricTensor checks that m is a Tensor of the type Metric *)
-CheckMetricTensor[m_Tensor]:=Module[{tt},(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})];
+
+TestMetricTensor::TestMetricTensorFalse="The tensor `1` isn't a metric tensor.";
+TestMetricTensor[m_Tensor]:=Module[{tt},(*NewCode: ExtractFunctions*)If[(TensorTypeNoPart[m]==={"Metric"}),True,Message[TestMetricTensor::TestMetricTensorFalse,m];False]];
 (* CollectRepeatedIndices takes in two or more Lists of Indices and returns all repeated ones *)
-CollectRepeatedIndices[ll__List]/;(Union[CheckIndex/@Join[ll]]==={True}):=Cases[Split[Sort[(#[[1]]&/@Join[ll])]],{ss_Symbol,ss_Symbol}->ss];
+CollectRepeatedIndices[ll__List]/;(Union[TestIndices/@Join[ll]]==={True}):=Cases[Split[Sort[(#[[1]]&/@Join[ll])]],{ss_Symbol,ss_Symbol}->ss];
 (* NotAbstractIndex takes in an index \[Mu], a List of coordinates cooo, and start index si, and returns True if the index is not abstract and False otherwise *)
 (* Note: start index is needed because sometimes the Index is given as an Integer^- or Subscript[Integer, -] *)
 (* The index can be UnderBarred or not *)
-NotAbstractIndex[\[Mu]_,cooo_List,si_Integer]:=((CheckIndex[\[Mu]]&&(Intersection[{NumericIndex[\[Mu],cooo,si][[1]]},Range[si,Length[cooo]+si-1]]==={NumericIndex[\[Mu],cooo,si][[1]]})));
-(* ScalarTest reads in a Tensor and determines whether it is a scalar by checking *)
+NotAbstractIndex::NotAbstractIndexOutOfRange="The specified index `1` is out of range.";
+NotAbstractIndex[\[Mu]_,cooo_List,si_Integer]:=
+Which[TestOverHatIndex[\[Mu]],(TestIndices[\[Mu]]&&If[(Head[\[Mu][[1,1]]]===Integer)&&(Intersection[{NumericIndex[\[Mu],cooo,si][[1,1]]},Range[si,Length[cooo]+si-1]]=!={NumericIndex[\[Mu],cooo,si][[1,1]]}),Message[NotAbstractIndex::NotAbstractIndexOutOfRange,\[Mu]];False,True])&&If[(Head[\[Mu][[1,1]]]=!=Integer),False,True],True,
+(TestIndices[\[Mu]]&&If[(Head[\[Mu][[1]]]===Integer)&&(Intersection[{NumericIndex[\[Mu],cooo,si][[1]]},Range[si,Length[cooo]+si-1]]=!={NumericIndex[\[Mu],cooo,si][[1]]}),Message[NotAbstractIndex::NotAbstractIndexOutOfRange,\[Mu]];False,True]&&((Intersection[{NumericIndex[\[Mu],cooo,si][[1]]},Range[si,Length[cooo]+si-1]]==={NumericIndex[\[Mu],cooo,si][[1]]})))];
+(* TestScalarTensor reads in a Tensor and determines whether it is a scalar by checking *)
 (* (1) If Indices are empty {} (2) if all Indices are UnderBarred *)
 (* returns True if Tensor is scalar and False otherwise *)
-ScalarTest[m_Tensor]:=(Indices[m]==={})||MatchQ[Indices[m],{(SuperMinus|SubMinus)[UnderBar[_]]..}];
+TestScalarTensor[t_Tensor]:=(Indices[t]==={})||MatchQ[Indices[t],{(SuperMinus|SubMinus)[UnderBar[_]]..}];
+
+TestScalarTensor[t_/;TestExpressionForm[t]]:=False;
+
+TestScalarTensor[(t_Times|t_Plus)/;!TestExpressionForm[t]]:=Which[(Flatten[Cases[t,(Indices-> idx_)-> idx,Infinity]]==={}),True,True,False];
+TestTensorTensor[t_]:=((!TestExpressionForm[t])&&(!TestScalarTensor[t])&&(RemoveUnderBarredIndices[Flatten[Cases[{(t)},((Indices->(idx_/;(idx=!={})))-> idx ),Infinity]]]=!={}));
+TestSingleTensorTensor[t_]:=((Head[t]===Tensor)&&(!TestExpressionForm[t])&&(!TestScalarTensor[t])&&(RemoveUnderBarredIndices[Flatten[Cases[{(t)},((Indices->(idx_/;(idx=!={})))-> idx ),Infinity]]]=!={}));
+
 (* RemoveUnderBarredIndices remove all UnderBarred Indices *)
 RemoveUnderBarredIndices[\[Mu]T_List]:=Module[{xx1,xx2},DeleteCases[\[Mu]T,SuperMinus[UnderBar[xx1_]]|SubMinus[UnderBar[xx2_]]]];
+RemoveUnderBarredIndices[t_Tensor]:=Indices[t,RemoveUnderBarredIndices[Indices[t]]];
+
 (* RemoveRepeatedUnderBarredIndices remove all repeated UnderBarred Indices *)
 RemoveRepeatedUnderBarredIndices[\[Mu]T_List]:=Module[{\[Mu],i1,i2,i3},(\[Mu]T//.{i1___,SuperMinus[UnderBar[\[Mu]_]],i2___,SubMinus[UnderBar[\[Mu]_]],i3___}->{i1,i2,i3})//.{i1___,SubMinus[UnderBar[\[Mu]_]],i2___,SuperMinus[UnderBar[\[Mu]_]],i3___}->{i1,i2,i3}];
+RemoveRepeatedUnderBarredIndices[t_Tensor]:=Indices[t,RemoveRepeatedUnderBarredIndices[Indices[t]]];
+
 (* NestedDel takes in an express of the form Del[...Del[stuff]] and returns {# of Dels, stuff} *)
 (* By stuff we simply mean the remainder after the outer most Del's are peeled away; there could still be Del's hidden in output *)
 NestedDel[dd_Del]:=Module[{stuff,idx},
@@ -340,27 +969,128 @@ stuff=stuff[[1]];idx=idx+1;
 ];
 (* FormatTensorName formats the TensorName of a Tensor object *)
 FormatTensorName[name_]:=Which[
-(* If it is a TensorProduct we put a parenthesis around it *)
-Head[name]===TensorProduct,MatrixForm[{name}],
-(* If it is a CovariantD we put a parenthesis around it *)
-Head[name]===Del,MatrixForm[{name}],
+MatchQ[Head[name],((* If it is a TensorProduct/CovariantD/Times we put a parenthesis around it *)TensorProduct|Del|Times|Row)],MatrixForm[{name}],
 True,name];
+
+(*You can input as a Tensor or list (Coordinates). The output will be the rank of tensor.*)
+RankNumber[t_Tensor]:=Length[RemoveUnderBarredIndices[Indices[t]]];
+RankNumber[\[Mu]_List]:=Length[RemoveUnderBarredIndices[\[Mu]]];
+RankNumber[expr_/;TestExpressionForm[expr]]:=0;
+CoordinatesDimension[t_Tensor]:=Length[Coordinates[t]];
+ComponentRankNumber[t_Tensor]/;!TestExpressionForm[TensorComponents[t]]:=Length[Dimensions[TensorComponents[t]]];
+ComponentRankNumber[t_Tensor]/;TestExpressionForm[TensorComponents[t]]:=0;
+ComponentRankNumber[\[Mu]_List]:=Length[Dimensions[\[Mu]]];
+ComponentRankNumber[\[Mu]_/;TestExpressionForm[\[Mu]]]:=0;
+TestMoveOnlyOneType[tt_Tensor,idx_List]:=Module[{list={},i,ttidx},ttidx=RemoveUnderBarredIndices[Indices[tt]];Do[Which[Head[idx[[i]]]=!=Head[ttidx[[i]]],list=Append[list,Head[idx[[i,1]]]]],{i,Sequence@@Dimensions[idx]}];
+MatchQ[Dimensions[(Union[list]/.{Integer-> Nothing})],({0}|{1})]];
+
+OverHatSgn[\[Mu]_]:=Which[((Head[\[Mu][[1]]])===Symbol),-1,((Head[\[Mu][[1]]])===OverHat),1,((Head[\[Mu][[1]]])===Integer),-1]
+NonZeroTensorComponents[name_,
+\[Mu]T_List,
+ttM_,
+coords_List]:=Module[{collist={},rank=RankNumber[\[Mu]T],dim=Length[coords],symboltemp,symbollist={},range,replacementlist,newdisp},
+(*Prepare the lhs (column list)*)
+Do[
+collist=Append[collist,UpOrDown[\[Mu]T[[i]]]],{i,1,rank}];
+(*First step. Haven't specified any index.*)
+newdisp={(Row[{FormatTensorName[name],Sequence@@collist}]->ttM)};
+(*2nd, 3rd steps, and so on. Start to specified from first index until every index is specified.*)
+Do[newdisp=Table[Cases[newdisp,Rule[a_,b_]:> Rule[a/.(\[Mu]T[[idxnumber]][[1]]->coords[[coordnumber]]),b[[coordnumber]]],Infinity],{coordnumber,1,dim}],{idxnumber,1,rank}];
+(*Select non-zero comp.*)
+Select[newdisp//Flatten,(Flatten[Cases[{#},(Row[__]->cc_)->cc]][[1]]=!=0)&]
+];
+
+TestDifferentialForm::AntiSymmetricOrVectorOrScalar="The argument `1` might not have anti-symmetric TensorComponent, or it is not 1-form nor scalar.";
+(*TestDifferentialForm::TestIndicesFalse="The argument `1` does not have indices in correct format.";*)
+TestDifferentialForm::AllLowerIndicesFalse="The argument `1` does not have all lower indices.";
+
+TestDifferentialForm[t_Tensor]:=(If[((*check t is a fully anti-symm tensor*)(TensorSymmetry[t][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])||(*Or t should be a scalar*)(TestScalarTensor[t])||(*Or t should be a vector*)(RankNumber[t]===1)),True,Message[TestDifferentialForm::AntiSymmetricOrVectorOrScalar,t];False]&&(*Check indices in t are OK or no index (scalar).*)(*If[*)MatchQ[(Union[TestIndices[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{True}|{}](*,True,Message[TestDifferentialForm::TestIndicesFalse,t];False]*)&&(*All of them should be lower indices or no index.*)If[MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{-1}|{}],True,Message[TestDifferentialForm::AllLowerIndicesFalse,t];False])
+
+TestDifferentialForm[t_Tensor,m_Tensor/;TestMetricTensor[m]]:=(If[((*check t is a fully anti-symm tensor*)(TensorSymmetry[LowerAllIndices[t,m]][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])||(*Or t should be a scalar*)(TestScalarTensor[t])||(*Or t should be a vector*)(RankNumber[t]===1)),True,Message[TestDifferentialForm::AntiSymmetricOrVectorOrScalar,t];False]&&(*Check indices in t are OK or no index (scalar).*)(*If[*)MatchQ[(Union[TestIndices[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{True}|{}](*,True,Message[TestDifferentialForm::TestIndicesFalse,t];False]*)(*Shouldn't check all of them be lower indices or no index.*))
+
+TestDifferentialVector::AntiSymmetricOrVectorOrScalar="The argument `1` might not have anti-symmetric TensorComponent, or it is not a vector nor scalar.";
+(*TestDifferentialVector::TestIndicesFalse="The argument `1` does not have indices in correct format.";*)
+TestDifferentialVector::AllUpperIndicesFalse="The argument `1` does not have all upper indices.";
+
+TestDifferentialVector[t_Tensor]:=(If[((*check t is a fully anti-symm tensor*)(TensorSymmetry[t][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])||(*Or t should be a scalar*)(TestScalarTensor[t])||(*Or t should be a vector*)(RankNumber[t]===1)),True,Message[TestDifferentialVector::AntiSymmetricOrVectorOrScalar,t];False]&&(*Check indices in t are OK or no index (scalar).*)(*If[*)MatchQ[(Union[TestIndices[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{True}|{}](*,True,Message[TestDifferentialVector::TestIndicesFalse,t];False]*)&&(*All of them should be upper indices or no index.*)If[MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{1}|{}],True,Message[TestDifferentialVector::AllUpperIndicesFalse,t];False])
+
+TestDifferentialVector[t_Tensor,m_Tensor/;TestMetricTensor[m]]:=(If[((*check t is a fully anti-symm tensor*)(TensorSymmetry[RaiseAllIndices[t,m]][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])||(*Or t should be a scalar*)(TestScalarTensor[t])||(*Or t should be a vector*)(RankNumber[t]===1)),True,Message[TestDifferentialVector::AntiSymmetricOrVectorOrScalar,t];False]&&(*Check indices in t are OK or no index (scalar).*)(*If[*)MatchQ[(Union[TestIndices[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{True}|{}](*,True,Message[TestDifferentialVector::TestIndicesFalse,t];False]*)(*Shouldn't check all of them be upper indices or no index.*))
+
+FullyAntiSymmetricTensorQ[t_Tensor,m_Tensor/;TestMetricTensor[m]]:=(((*check t is a fully anti-symm tensor*)(TensorSymmetry[LowerAllIndices[t,m]][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])&&(RankNumber[t]>1))&&(*Check indices in t are OK.*)MatchQ[(Union[TestIndices[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{True}](*Shouldn't check all of them be upper indices or lower indices.*))
+
+TestExpressionForm[stuff_]:=((Union[Cases[{stuff},Tensor[xx___],\[Infinity]]]==={})&&(Head[stuff]=!=List))
+
+TestOneVector::TestOneVectorFalse="The argument `1` isn't a 1-vector tensor.";
+
+TestOneVector[\[Xi]_Tensor]:=If[(MatchQ[Indices[\[Xi]],{SuperMinus[_]}]),True,Message[TestOneVector::TestOneVectorFalse,\[Xi]];False];
+
+WedgeExpand[tw_TensorWedge]:=Module[{dlist,Permutelist,sgnlist,lgth,result,ii},
+dlist=tw/.{TensorWedge[xxx___]-> {xxx}};
+Permutelist=Permutations[dlist];
+sgnlist=Signature[#]&/@Permutelist;
+lgth=Length[Permutelist];
+result=Apply[Plus,sgnlist[[1]]Table[sgnlist[[ii]] TensorProduct[Sequence@@Permutelist[[ii]]],{ii,1,lgth}]]
+];
+
+TestSymmetricTensorExpressionForm[stuff_]:=Module[{texpand,\[Epsilon],a,\[Epsilon]downpower,\[Epsilon]uppower},
+texpand=stuff//Expand;
+Which[((Cases[{texpand},TensorProduct[\[DifferentialD]_,__],Infinity]=!={})||(Cases[{texpand},TensorProduct[\[Del]_,__],Infinity]=!={})||(Cases[{texpand},TensorWedge[\[DifferentialD]_,__],Infinity]=!={})||(Cases[{texpand},TensorWedge[\[Del]_,__],Infinity]=!={})),False,True,\[Epsilon]downpower=(texpand/.(\[Del]a_)->(\[Epsilon] \[Del]a))/texpand//Simplify;
+\[Epsilon]uppower=(texpand/.(\[DifferentialD]a_)->(\[Epsilon] \[DifferentialD]a))/texpand//Simplify;Which[(\[Epsilon]uppower===1)&&MatchQ[\[Epsilon]downpower,Power[\[Epsilon],_]],True,(\[Epsilon]downpower===1)&&MatchQ[\[Epsilon]uppower,Power[\[Epsilon],_]],True,(\[Epsilon]uppower===1)&&(\[Epsilon]downpower===\[Epsilon]),True,(\[Epsilon]downpower===1)&&(\[Epsilon]uppower===\[Epsilon]),True,True,False]]
+];
+
+BasisSgn[stuff_]:=Which[MatchQ[stuff,\[DifferentialD]_],-1,MatchQ[stuff,\[Del]_],1];
+
+TestFormVectorIndices[t_Tensor]:=MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{1}|{-1}|{}];
+
+TestFormVectorIndices[indices_List]:=MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[indices]]),{1}|{-1}|{}];
+
+IsThereInertTensor::RepeatedIndices="The index `1` is repeated at the same position.";
+
+IsThereInertTensor[(t_Times|t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})))]:=Module[{tList,allInidces,FlattenAllInidces,tl,idxl,i,j,IsItInert,allInidcesTemp},
+tList=(Apply[List,t]);
+allInidces=RemoveUnderBarredIndices[#]&/@(Indices[#]&/@tList);
+FlattenAllInidces=Flatten[allInidces];
+tl=Length[allInidces];
+idxl=Length[FlattenAllInidces];
+IsItInert=Table[0,{i,1,idxl}];
+Do[Which[((i=!=j)&&(FlattenAllInidces[[i,1]]===FlattenAllInidces[[j,1]])&&((Sgn[FlattenAllInidces[[i]]]Sgn[FlattenAllInidces[[j]]])===-1)),IsItInert=ReplacePart[IsItInert,{i->1,j->1}],((i=!=j)&&(FlattenAllInidces[[i,1]]===FlattenAllInidces[[j,1]])&&((Sgn[FlattenAllInidces[[i]]]Sgn[FlattenAllInidces[[j]]])===1)),Message[IsThereInertTensor::RepeatedIndices,FlattenAllInidces[[i]]];],{i,1,idxl},{j,i,idxl}];
+allInidcesTemp=allInidces;
+Do[allInidcesTemp=ReplacePart[allInidcesTemp,Position[allInidces,FlattenAllInidces[[i]]][[1]]->IsItInert[[i]]],{i,1,idxl}];
+ZeroTensorQ[#]&/@allInidcesTemp
+]
+
+TestTensorsProduct[(t_Times|t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})))]:=(* check tensor product *)(* everybody is a Tensor *)(Union[Head/@(Apply[List,t])]==={Tensor})&&(* all coordinate systems are the same *)(Length[Union[Coordinates/@Cases[Apply[List,t],Tensor[___]]]]===1)&&(*All scalar Tensors have already been factored out.*)(Cases[(Apply[List,t]),(st_/;TestScalarTensor[st]),{1}]==={})&&(Length[Apply[List,t]]=!=1)
+RepeatedIndices[IndicesList_List]:=Module[{FlattenAllInidces,GatherFlattenAllIndices,RepeatedPairs},
+FlattenAllInidces=RemoveUnderBarredIndices[Flatten[IndicesList]];
+GatherFlattenAllIndices=Gather[FlattenAllInidces,(#1[[1]]===#2[[1]])&];
+RepeatedPairs=DeleteCases[GatherFlattenAllIndices,{xxx___}/;Length[{xxx}]<2]
+];
+ExtractTheFirstTensor[(t_Tensor|t_Times|t_Plus|t_NonCommutativeMultiply)/;(!TestExpressionForm[t])]:=Cases[{t},_Tensor,Infinity][[1]]
 
 
 (* ::Input::Initialization:: *)
 (* Metric *)
 (* this is how we are going to input a metric and compute geometric objects *)
-Tensor/:Tensor[
+Tensor[
 TensorType->"Metric",
 TensorName->name_,
 StartIndex->si_Integer/;si>=0,
-Indices->{\[Mu]T_/;(CheckIndex[\[Mu]T]&&(Head[\[Mu]T[[1]]]===Symbol)),\[Nu]T_/;(CheckIndex[\[Nu]T]&&(Head[\[Nu]T[[1]]]===Symbol))},
-CoordinateSystem->coords_List/;MatchQ[Dimensions[coords],{_Integer}],
+Indices->{\[Mu]T_/;(TestIndices[\[Mu]T]&&(Head[\[Mu]T[[1]]]===Symbol)),\[Nu]T_/;(TestIndices[\[Nu]T]&&(Head[\[Nu]T[[1]]]===Symbol))},
+Coordinates->coords_List/;MatchQ[Dimensions[coords],{_Integer}],
 TensorComponents->matrix_/;MatchQ[Dimensions[matrix],{nn_,nn_}],
 ChristoffelOperator->ChrisOp_,
 RiemannOperator->RiemannOp_,
 RicciOperator->RicciOp_,
-RicciScalarOperator->RicciSOp_
+RicciScalarOperator->RicciSOp_,
+TooltipDisplay->ttdisplay_,
+TooltipStyle->ttstyle_,
+FlatMetric->fm_,
+OrthonormalFrameField->onffuser_,
+InverseOrthonormalFrameField->invonffuser_,
+OrthonormalFrameFieldOperator->onffop_,
+OrthonormalFrameFieldIndices->onffidx_,
+TensorAssumption->TA_,
+TensorOperator-> Top_
 ]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]||MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]):=Module[
 {Detg,MetricT,MetricM,Ch,RiemannP,Riemann,RicciT,RicciS,Metric,MetricInv,
 	\[Alpha],\[Beta],\[Mu],\[Nu],d,\[Lambda],\[Sigma],coord,gInv,
@@ -381,7 +1111,7 @@ coord[\[Alpha]_]:=coords[[\[Alpha]+1]];
 Detg=Simplify[Det[MetricM]];
 Metric[\[Mu]_,\[Nu]_]:=MetricM[[\[Mu]+1,\[Nu]+1]];
 MetricInv[\[Mu]_,\[Nu]_]:=Inverse[MetricM][[\[Mu]+1,\[Nu]+1]];
-Ch[\[Mu]_,\[Alpha]_,\[Beta]_]:=1/2 Sum[MetricInv[\[Mu],\[Lambda]](D[Metric[\[Beta],\[Lambda]],coord[\[Alpha]]]+D[Metric[\[Alpha],\[Lambda]],coord[\[Beta]]]-D[Metric[\[Alpha],\[Beta]],coord[\[Lambda]]]),{\[Lambda],0,d-1}];
+Ch[\[Mu]_,\[Alpha]_,\[Beta]_]:=(1/2)Sum[MetricInv[\[Mu],\[Lambda]](D[Metric[\[Beta],\[Lambda]],coord[\[Alpha]]]+D[Metric[\[Alpha],\[Lambda]],coord[\[Beta]]]-D[Metric[\[Alpha],\[Beta]],coord[\[Lambda]]]),{\[Lambda],0,d-1}];
 RiemannP[\[Alpha]_,\[Beta]_,\[Mu]_,\[Nu]_]:=D[Ch[\[Alpha],\[Beta],\[Nu]],coord[\[Mu]]]+Sum[Ch[\[Alpha],\[Mu],\[Sigma]]Ch[\[Sigma],\[Beta],\[Nu]],{\[Sigma],0,d-1}];
 Riemann[\[Alpha]_,\[Beta]_,\[Mu]_,\[Nu]_]:=RiemannP[\[Alpha],\[Beta],\[Mu],\[Nu]]-RiemannP[\[Alpha],\[Beta],\[Nu],\[Mu]];
 RicciT[\[Beta]_,\[Nu]_]:=Sum[Riemann[\[Mu],\[Beta],\[Mu],\[Nu]],{\[Mu],0,d-1}];RicciS:=Sum[MetricInv[\[Beta],\[Nu]]RicciT[\[Beta],\[Nu]],{\[Beta],0,d-1},{\[Nu],0,d-1}];
@@ -407,24 +1137,105 @@ TensorType->"Metric",
 TensorName->name,
 StartIndex->si,
 Indices->{\[Mu]T,\[Nu]T},
-CoordinateSystem->coords,
+Coordinates->coords,
 TensorComponents->matrix,
 MetricDeterminant->Detg,
 ChristoffelComponents->Flatten[ChristoffelRules],
 RiemannComponents->Flatten[RiemannRules],
 RicciComponents->Flatten[RicciTensorRules],
-RicciScalarInvariant->Flatten[RicciScalarRule]
+RicciScalarInvariant->Flatten[RicciScalarRule],
+TooltipDisplay->ttdisplay,
+TooltipStyle->ttstyle,
+FlatMetric->fm,
+OrthonormalFrameField->onffuser,
+InverseOrthonormalFrameField->invonffuser,
+OrthonormalFrameFieldOperator->onffop,
+OrthonormalFrameFieldIndices->onffidx,
+TensorAssumption->TA,
+TensorOperator-> Top
 ]
 ];
 (* Metric: If one up and one down index TensorName is changed to \[Delta] *)
 (* this is also good reminder that going to one up one down indices throws away info on the metric itself *)
-Tensor/:Tensor[
+Tensor[
 xx___,
 TensorType->"Metric",
 Indices->{i1_,i2_}/;((* one up and one down *)Sgn[i1]Sgn[i2]===-1),
 TensorName->name_/;((name=!="\!\(\*
 StyleBox[\"\[Delta]\",\nFontSlant->\"Italic\"]\)")&&(name=!="\[Delta]"))
 ]:=Tensor[xx,TensorType->"Metric",Indices->{i1,i2},TensorName->"\[Delta]"];
+
+
+(* ::Input::Initialization:: *)
+(*NewCode: Second strategy of ONFF*)
+Tensor/:Eigensystem[t_Tensor]:=Eigensystem[TensorComponents[t]];
+
+
+(* ::Input::Initialization:: *)
+(*OrthonormalFrameField Tensor part*)
+Tensor[
+(*The pattern check here take care of pattern checking efficiency.*)
+xx__/;((*Check ChristoffelComponents is to ensure we finished all basic metric calculation.*)
+(Cases[{xx},(ChristoffelComponents->cc_)->cc,1]=!={})&&
+(IndicesNoPart[{xx}]=!={})&&(Cases[{xx},(TensorComponents->tc_)->tc,1]=!={})&&(TensorTypeNoPart[{xx}]==={"Metric"})&&
+(*FlatMetric should be not Null and a Rank-1 list. We will diagnalize it and make it become a Rank-2 matrix so that it won't macth the pattern again.*)
+(Cases[{xx},(FlatMetric->fm_)->fm,1]=!={Null})&&(ComponentRankNumber[Cases[{xx},(FlatMetric->fm_)->fm,1][[1]]]===1)&&(If[(Cases[{xx},(OrthonormalFrameField->onfff_)->onfff,1]=!={Null}),If[(Head[Cases[{xx},(OrthonormalFrameField->onfff_)->onfff,1][[1]]]===List),(Dimensions[Cases[{xx},(TensorComponents->tc_)->tc,1][[1]]]===Dimensions[Cases[{xx},(OrthonormalFrameField->onfff_)->onfff,1][[1]]]),False],True]&&(If[(Cases[{xx},(InverseOrthonormalFrameField->invonfff_)->invonfff,1]=!={Null}),If[(Head[Cases[{xx},(InverseOrthonormalFrameField->invonfff_)->invonfff,1][[1]]]===List),(Dimensions[Cases[{xx},(TensorComponents->tc_)->tc,1][[1]]]===Dimensions[Cases[{xx},(InverseOrthonormalFrameField->invonfff_)->invonfff,1][[1]]]),False],True]))&&If[(Cases[{xx},(OrthonormalFrameField->onfff_)->onfff,1]==={Null})&&(Cases[{xx},(InverseOrthonormalFrameField->invonfff_)->invonfff,1]==={Null}),DiagonalMatrixQ[Cases[{xx},(TensorComponents->tc_)->tc,1][[1]]],True])
+]:=Module[{eigens,Flatmetric,g,ginv,d,rotm,valuesqrt,ONFFm,ONFFinvm,output,onff,invonff,idx,matrix,onffop,fm,cc,tempm,ONFFt,ONFFinvt,\[Alpha],\[Mu],coord,onffidx,ONFFtidx,ONFFinvtidx,i},
+(*Extract arguments*)
+idx=Indices[{xx}];
+matrix=TensorComponents[{xx}];
+fm=Cases[{xx},(FlatMetric->cc_)->cc,\[Infinity]][[1]];
+d=Length[fm];
+onff=Cases[{xx},(OrthonormalFrameField->cc_)->cc,\[Infinity]][[1]];
+invonff=Cases[{xx},(InverseOrthonormalFrameField->cc_)->cc,\[Infinity]][[1]];
+onffop=Cases[{xx},(OrthonormalFrameFieldOperator->cc_)->cc,\[Infinity]][[1]];
+coord=Coordinates[{xx}];
+onffidx=Cases[{xx},(OrthonormalFrameFieldIndices->cc_)->cc,\[Infinity]][[1]];
+(*If we have Subscript[g, ab], we should calculate g^ab. vice versa, if we have g^ab, we should calculate Subscript[g, ab]. it shares same operator w/ OrthonormalFrameField.*)
+Which[MatchQ[idx,{SubMinus[_],SubMinus[_]}],g=matrix;ginv=(Inverse[matrix]//onffop),MatchQ[idx,{SuperMinus[_],SuperMinus[_]}],ginv=matrix;g=(Inverse[matrix]//onffop)];
+(*DiagonalMatrix on FlatMetric*)
+Flatmetric=DiagonalMatrix[fm];
+
+Which[(onff===Null)&&(invonff===Null),
+ONFFm=DiagonalMatrix[Table[(Sqrt[fm[[i]] g[[i,i]]]),{i,1,d}]];
+ONFFinvm=DiagonalMatrix[Table[(Sqrt[fm[[i]] ginv[[i,i]]]),{i,1,d}]];,
+(*If user offer at least one, we utilize it to get the other.*)
+(onff=!=Null)&&(invonff===Null),
+	ONFFm=onff;
+(*Subscript[\[CurlyEpsilon], Overscript[a, ^]]^b=Subscript[\[Eta], ad]Subscript[\[CurlyEpsilon]^Overscript[d, ^], c]g^cb*)
+	ONFFinvm=Flatmetric.onff.ginv,
+(onff===Null)&&(invonff=!=Null),ONFFinvm=invonff;
+(*Subscript[\[CurlyEpsilon]^Overscript[d, ^], c]=\[Eta]^daSubscript[\[CurlyEpsilon], Overscript[a, ^]]^bSubscript[g, bc]*)
+	ONFFm=Flatmetric.invonff.g,
+(*If user offer both of them, we use them.*)
+(onff=!=Null)&&(invonff=!=Null),ONFFm=onff;ONFFinvm=invonff
+];
+ONFFm=(ONFFm//onffop);
+ONFFinvm=(ONFFinvm//onffop);
+(*Declare OrthonormalFrameField as a Tensor object.*)
+ONFFtidx=Which[((onffidx=!=Null)&&((Head[#]&/@onffidx)==={OverHat,Symbol})&&(Head[onffidx[[1,1]]]===Symbol)),{SuperMinus[onffidx[[1]]],SubMinus[onffidx[[2]]]},True,{SuperMinus[\!\(\*OverscriptBox[\(\[Alpha]\), \(^\)]\)],SubMinus[\[Mu]]}];
+ONFFinvtidx=Which[((onffidx=!=Null)&&((Head[#]&/@onffidx)==={OverHat,Symbol})&&(Head[onffidx[[1,1]]]===Symbol)),{SubMinus[(onffidx[[1]])],SuperMinus[onffidx[[2]]]},True,{SubMinus[\!\(\*OverscriptBox[\(\[Alpha]\), \(^\)]\)],SuperMinus[\[Mu]]}];
+ONFFt={
+xx
+}/.{(FlatMetric->fm_)->Nothing,(OrthonormalFrameField->onf_)->Nothing,(InverseOrthonormalFrameField->ionf_)->Nothing,(TensorType->tt_)-> Nothing,
+(TensorName->tn_)->(TensorName->"\[CurlyEpsilon]") ,
+(Indices->idxx_)-> (Indices->ONFFtidx),
+(TensorComponents->tc_)-> (TensorComponents->ONFFm),
+(MetricDeterminant->md_)->Nothing ,
+(ChristoffelComponents->ccc_)->Nothing ,
+(RiemannComponents->rc_)->Nothing ,
+(RicciComponents->ric_)->Nothing ,
+(RicciScalarInvariant->rsi_)->Nothing ,
+(OrthonormalFrameFieldIndices->onffidxxx_)->Nothing };
+ONFFinvt=ONFFt/.{(Indices->idxx_)-> (Indices->ONFFinvtidx),
+(TensorComponents->tc_)-> (TensorComponents->ONFFinvm)
+};
+ONFFt=Apply[Tensor,ONFFt];
+ONFFinvt=Apply[Tensor,ONFFinvt];
+tempm=ReleaseHold[(*Hold first and replace. To avoid trigger initial pattern and create infinte loop.*)Hold[Tensor[
+xx
+]]/.{(FlatMetric->fm_)->(FlatMetric->Flatmetric),(OrthonormalFrameField->onf_)->(OrthonormalFrameField->ONFFt),(InverseOrthonormalFrameField->ionf_)->(InverseOrthonormalFrameField->ONFFinvt)}]
+];
 
 
 (* ::Input::Initialization:: *)
@@ -439,7 +1250,9 @@ MetricDeterminant->Detg_,
 ChristoffelComponents->ChrisRules_,
 RiemannComponents->RiemRules_,
 RicciComponents->RicRules_,
-RicciScalarInvariant->RRule_
+RicciScalarInvariant->RRule_,
+OrthonormalFrameField->onffuser_,
+InverseOrthonormalFrameField->invonffuser_
 ],\[Epsilon]__List]:=Tensor[
 xx,
 TensorType->"Metric",
@@ -448,32 +1261,49 @@ MetricDeterminant->Normal[Series[Detg,\[Epsilon]]],
 ChristoffelComponents->ChrisRules/.(ChristoffelComponents[chx__]->rhs_):>(ChristoffelComponents[chx]->Normal[Series[rhs,\[Epsilon]]]),
 RiemannComponents->RiemRules/.(RiemannComponents[riex__]->rhs_):>(RiemannComponents[riex]->Normal[Series[rhs,\[Epsilon]]]),
 RicciComponents->RicRules/.(RicciComponents[ricx__]->rhs_):>(RicciComponents[ricx]->Normal[Series[rhs,\[Epsilon]]]),
-RicciScalarInvariant->RRule/.(RicciScalar->rhs_):>(RicciScalar->Normal[Series[rhs,\[Epsilon]]])
+RicciScalarInvariant->RRule/.(RicciScalar->rhs_):>(RicciScalar->Normal[Series[rhs,\[Epsilon]]]),OrthonormalFrameField->Normal[Series[onffuser,\[Epsilon]]],
+InverseOrthonormalFrameField->Normal[Series[invonffuser,\[Epsilon]]]
 ];
 (* Non-Metric, Does not contain TooltipDisplay *)
-Tensor/:Series[Tensor[
-xx___/;(Cases[{xx},TooltipDisplay,\[Infinity]]==={}),
-TensorType->type_/;type=!="Metric",
-TensorComponents->matrix_
-],\[Epsilon]__List]:=Tensor[
-xx,
-TensorType->type,
-TensorComponents->Normal[Series[matrix,\[Epsilon]]]
-];
-(* Non-Metric, Contains TooltipDisplay *)
-Tensor/:Series[Tensor[
-xx___,
-TensorType->type_/;type=!="Metric",
-TensorComponents->matrix_,
-TooltipDisplay->disp_
-],\[Epsilon]__List]:=Module[{},
-Tensor[
-xx,
-TensorType->type,
-TensorComponents->Normal[Series[matrix,\[Epsilon]]],
-TooltipDisplay->(disp/.Rule[lhs_,rhs_]:>Rule[lhs,Normal[Series[rhs,\[Epsilon]]]])
-]
-];
+Tensor/:Series[t_Tensor/;((TensorTypeNoPart[t]=!={"Metric"})),\[Epsilon]__List]:=t/.{((TensorComponents->mx_):>(TensorComponents->Normal[Series[mx,\[Epsilon]]]))};
+
+
+(* ::Input::Initialization:: *)
+(* Dimensions of Tensors *)
+(*NewCode: TagSetDelay w/t_Tensor*)
+Tensor/:Dimensions[t_Tensor]:=Dimensions[TensorComponents[t]];
+
+
+(* ::Input::Initialization:: *)
+Tensor/:Normal[t_Tensor]:=t/.{(TensorComponents-> comp_):> (TensorComponents-> Normal[comp])};
+
+
+(* ::Input::Initialization:: *)
+Tensor/:Conjugate[t_Tensor]:=t/.{(TensorComponents-> comp_):> (TensorComponents-> Conjugate[comp]),(TensorName-> name_):> (TensorName->Which[(Head[name]===OverBar),name[[1]],True, OverBar[name]])};
+
+
+(* ::Input::Initialization:: *)
+(*D*)
+PartialD[
+t_Tensor,stuff_/;TestExpressionForm[stuff]]:=(*re-declare a new Tensor w/ add "\[PartialD]" in front if TensorName and take a derivative on all the TensorComponents.*)t/.{
+(TensorName->tc_)->(TensorName->Subscript["\[PartialD]",stuff][TensorName[t]]),
+(TensorComponents->cc_)->(TensorComponents->D[TensorComponents[t],stuff])};
+
+
+(* ::Input::Initialization:: *)
+Tensor/:Simplify[t_Tensor]:=
+Module[{TA=TensorAssumption[t]},Simplify[t,TA]];
+
+
+(* ::Input::Initialization:: *)
+Tensor/:FullSimplify[t_Tensor]:=
+Module[{TA=TensorAssumption[t]},FullSimplify[t,TA]];
+
+
+(* ::Input::Initialization:: *)
+(* TensorSymmetry of Tensors *)
+Tensor/:TensorSymmetry[t_Tensor]:=Module[{ts},ts=TensorSymmetry[TensorComponents[t]];
+Which[(Cases[t,(TensorSymmetry->tss_)->tss]==={}),{ts,Append[t,TensorSymmetry->ts]},True,{ts,t/.(TensorSymmetry->oldts_)->(TensorSymmetry->ts)}]]
 
 
 (* ::Input::Initialization:: *)
@@ -481,206 +1311,579 @@ TooltipDisplay->(disp/.Rule[lhs_,rhs_]:>Rule[lhs,Normal[Series[rhs,\[Epsilon]]]]
 (* IofII: If all Indices are either Integers or Coordinates we return the component *)
 (* we need to include the possibility that there may be an UnderBar applied to some of the indices *)
 (* No UnderBarred Indices *)
-Tensor/:Tensor[
+Tensor[
 xxx___,
-CoordinateSystem->cooo_List,
+Coordinates->cooo_List,
 StartIndex->si_Integer,
 Indices->\[Mu]T_List,
 TensorComponents->matrix_
-]:=matrix[[Sequence@@((NumericIndex[#,cooo,si][[1]]-si+1)&/@\[Mu]T)]]/;(Union[NotAbstractIndex[#,cooo,si]&/@\[Mu]T]==={True});
+]:=matrix[[Sequence@@(((NumericIndex[#,cooo,si][[1]]/.(OverHat[a_]:>a))-si+1)&/@\[Mu]T)]]/;(Union[NotAbstractIndex[#,cooo,si]&/@\[Mu]T]==={True});
 (* If there are more than 1 UnderBarred Indices and all Indices are not abstract then all those indices not UnderBarred are subject to the operations in IIofII below, until all indices are UnderBarred *)
 (* So what remains is to deal with a Tensor with all UnderBarred Indices *)
 (* All UnderBarred Indices *)
-Tensor/:Tensor[
+Tensor[
 xxx___,
-CoordinateSystem->cooo_List,
+Coordinates->cooo_List,
 StartIndex->si_Integer,
-Indices->\[Mu]T_List/;MatchQ[\[Mu]T,{(SuperMinus|SubMinus)[UnderBar[_]]..}],
+Indices->\[Mu]T_List/;(MatchQ[\[Mu]T,{(SuperMinus|SubMinus)[UnderBar[_]]..}]&&(RemoveUnderBarredIndices[\[Mu]T]==={})),
 TensorComponents->matrix_
-]:=(* if all Indices are UnderBarred there should be only one component *)Which[Head[matrix]===List,matrix[[1]],True,matrix]/;(((* first remove repeated indices then remove all UnderBar's to first check no indices are abstract ones *)Union[NotAbstractIndex[#/.UnderBar[aa_]->aa,cooo,si]&/@RemoveRepeatedUnderBarredIndices[\[Mu]T]]==={True})||(RemoveRepeatedUnderBarredIndices[\[Mu]T]==={}));
+]:=(* if all Indices are UnderBarred there should be only one component *)matrix
+
 (* IIofII: If one or more Indices -- but not all of them -- are Integer or coordinates we reduce the rank of the Tensor accordingly *)
-Tensor/:Tensor[
+Tensor[
 xxx___,
-CoordinateSystem->cooo_List,
+Coordinates->cooo_List,
 StartIndex->si_Integer,
 Indices->{i1___,\[Mu]T_,i2___},
 TensorComponents->matrix_
 ]:=Module[{mtx,ni,VectorJ,ix,leftidx},
 (* contract with Subscript[\[Delta]^\[Mu], ni] or Subscript[\[Delta], \[Mu] ni] *)
-ni=NumericIndex[\[Mu]T,cooo,si][[1]];
+ni=(NumericIndex[\[Mu]T,cooo,si][[1]]/.(OverHat[a_]:>a));
 (* Subscript[\[Delta]^\[Mu], ni] or Subscript[\[Delta], \[Mu] ni] *)
 VectorJ=Table[Which[ni===ix,1,True,0],{ix,si,Length[cooo]+si-1}];
 (* we are going to contract Tensor with Subscript[\[Delta]^\[Mu], ni] or Subscript[\[Delta], \[Mu] ni] *)
 mtx=TensorProduct[VectorJ,matrix];
-(* ... do not include indices that do not pass CheckIndex ensuring that sequential Tensor reduction is OK -- i.e., no infinite recursion occurs -- as long as the UnderBar is applied to the said index after TensorContract is applied *)
-leftidx=DeleteCases[{i1},xx_/;CheckIndex[xx]===False];
+(* ... do not include indices that do not pass TestIndices ensuring that sequential Tensor reduction is OK -- i.e., no infinite recursion occurs -- as long as the UnderBar is applied to the said index after TensorContract is applied *)
+leftidx=DeleteCases[{i1},xx_/;TestIndices[xx]===False];
 mtx=TensorContract[mtx,{{1,Length[leftidx]+2}}];
 (* return the Tensor w/ everything the same except the TensorComponents and the index \[Mu]T *)
 Tensor[
 xxx,
-CoordinateSystem->cooo,
+Coordinates->cooo,
 StartIndex->si,
 Indices->{i1,UnderBar/@\[Mu]T,i2},
 TensorComponents->mtx
 ]
-]/;(CheckIndex[\[Mu]T]&&(* check the index is not abstract *)NotAbstractIndex[\[Mu]T,cooo,si]);
+]/;(TestIndices[\[Mu]T]&&(* check the index is not abstract *)NotAbstractIndex[\[Mu]T,cooo,si]);
 
 
 (* ::Input::Initialization:: *)
 (* Einstein summation: Repeated indices are summed over *)
-(* w/ Tooltipdisplay*)
-Tensor/:Tensor[
+Tensor[
 xxx___,
-TooltipDisplay->ttdd_,
-CoordinateSystem->cooo_List,
+Coordinates->cooo_List,
 StartIndex->si_Integer,
 Indices->{i1___,\[Mu]1T_,i2___,\[Mu]2T_,i3___},
 TensorComponents->matrix_
-]:=Module[{mtx,MJ,ix1,ix2,leftidx1,leftidx2},
+]:=Module[{mtx,i1WOUnderBar=RemoveUnderBarredIndices[{i1}],i2WOUnderBar=RemoveUnderBarredIndices[{i2}],i3WOUnderBar=RemoveUnderBarredIndices[{i3}],l1,l2,l3,ilist,ilistNoPos,matrixDimensions,isequencelist1,isequencelist2,isequencelist3,ContractIndicesRange,Joinisequencelist},
 (* Remember to remove underbarred indices because they are no longer part of the active index structue *)
-mtx=TensorContract[matrix,{{Length[RemoveUnderBarredIndices[{i1}]]+1,Length[RemoveUnderBarredIndices[{i1}]]+1+Length[RemoveUnderBarredIndices[{i2}]]+1}}];
+matrixDimensions=Dimensions[matrix];
+ilist=Join[i1WOUnderBar,{\[Mu]1T},i2WOUnderBar,{\[Mu]2T},i3WOUnderBar];
+ilistNoPos=#[[1]]&/@ilist;
+l1=Dimensions[RemoveUnderBarredIndices[{i1}]][[1]];
+l2=Dimensions[RemoveUnderBarredIndices[{i2}]][[1]];
+l3=Dimensions[RemoveUnderBarredIndices[{i3}]][[1]];
+isequencelist1={#[[1]],1,matrixDimensions[[Position[i1WOUnderBar,#][[1,1]]]]}&/@i1WOUnderBar;
+isequencelist2={#[[1]],1,matrixDimensions[[l1+1+Position[i2WOUnderBar,#][[1,1]]]]}&/@i2WOUnderBar;
+isequencelist3={#[[1]],1,matrixDimensions[[l1+1+l2+1+Position[i3WOUnderBar,#][[1,1]]]]}&/@i3WOUnderBar;
+ContractIndicesRange={{\[Mu]1T[[1]],1,matrixDimensions[[Position[ilist,\[Mu]1T][[1,1]]]]}};
+Joinisequencelist=Join[isequencelist1,isequencelist2,isequencelist3];
+mtx=Table[Sum[matrix[[Sequence@@ilistNoPos]],Evaluate[Sequence@@ContractIndicesRange]],Evaluate[Sequence@@Joinisequencelist]];
 (* return the Tensor w/ everything the same except the TensorComponents and the indics \[Mu]1T and \[Mu]2T *)
 Tensor[
 xxx,
-CoordinateSystem->cooo,
+Coordinates->cooo,
 StartIndex->si,
 Indices->{i1,UnderBar/@\[Mu]1T,i2,UnderBar/@\[Mu]2T,i3},
-TensorComponents->mtx,
-TooltipDisplay->Which[Cases[ttdd,matrix,\[Infinity]]==={},ttdd,True,ttdd/.matrix->mtx]]]/;(((* check repeated indices *)\[Mu]1T[[1]]===\[Mu]2T[[1]])&&((* check one index up and one down *)Sgn[\[Mu]1T]Sgn[\[Mu]2T]===-1)&&(((* check that both indices are abstract *)Position[{si,Length[cooo]+si-1},(* if \[Mu]1T is a coordinate this will return a SuperMinus[number] or SubMinus[number] *)NumericIndex[\[Mu]1T,cooo,si][[1]]]==={}))&&(((* check that both indices are abstract *)Position[{si,Length[cooo]+si-1},(* if \[Mu]2T is a coordinate this will return a SuperMinus[number] or SubMinus[number] *)NumericIndex[\[Mu]2T,cooo,si][[1]]]==={}))&&CheckIndex[\[Mu]1T]&&CheckIndex[\[Mu]2T]);
-(* w/o Tooltipdisplay*)
-Tensor/:Tensor[
-xxx___/;Union[Flatten[Cases[{xxx},TooltipDisplay->nnn_,\[Infinity]]]]==={},
-CoordinateSystem->cooo_List,
-StartIndex->si_Integer,
-Indices->{i1___,\[Mu]1T_,i2___,\[Mu]2T_,i3___},
-TensorComponents->matrix_
-]:=Module[{mtx,MJ,ix1,ix2,leftidx1,leftidx2},
-(* Remember to remove underbarred indices because they are no longer part of the active index structue *)
-mtx=TensorContract[matrix,{{Length[RemoveUnderBarredIndices[{i1}]]+1,Length[RemoveUnderBarredIndices[{i1}]]+1+Length[RemoveUnderBarredIndices[{i2}]]+1}}];
-(* return the Tensor w/ everything the same except the TensorComponents and the indics \[Mu]1T and \[Mu]2T *)
-Tensor[
-xxx,
-CoordinateSystem->cooo,
-StartIndex->si,
-Indices->{i1,UnderBar/@\[Mu]1T,i2,UnderBar/@\[Mu]2T,i3},
-TensorComponents->mtx]]/;(((* check repeated indices *)\[Mu]1T[[1]]===\[Mu]2T[[1]])&&((* check one index up and one down *)Sgn[\[Mu]1T]Sgn[\[Mu]2T]===-1)&&(((* check that both indices are abstract *)Position[{si,Length[cooo]+si-1},(* if \[Mu]1T is a coordinate this will return a SuperMinus[number] or SubMinus[number] *)NumericIndex[\[Mu]1T,cooo,si][[1]]]==={}))&&(((* check that both indices are abstract *)Position[{si,Length[cooo]+si-1},(* if \[Mu]2T is a coordinate this will return a SuperMinus[number] or SubMinus[number] *)NumericIndex[\[Mu]2T,cooo,si][[1]]]==={}))&&CheckIndex[\[Mu]1T]&&CheckIndex[\[Mu]2T]);
-
-
-(* ::Input::Initialization:: *)
-(* Appearance of Metric Tensor *)
-(* Jan 2014: we have decided to display the metric as any other rank 2 tensor i.e. Subscript[g, \[Mu]\[Nu]] or g^\[Mu]\[Nu] or Subscript[\[Delta]^\[Mu], \[Nu]] (if TensorName is g). TensorComponents are displayed by hovering mouse cursor over Subscript[g, \[Mu]\[Nu]]. *)
-(* Tensor/:Format[Tensor[
-TensorType\[Rule]"Metric",
-TensorName\[Rule]name_,
-StartIndex\[Rule]si_Integer(*/;si\[GreaterEqual]0*),
-Indices\[Rule]{\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T]},
-CoordinateSystem\[Rule]coords_,
-TensorComponents\[Rule]matrix_,
-ChristoffelComponents\[Rule]ChrisRules_,
-RiemannComponents\[Rule]RiemRules_,
-RicciComponents\[Rule]RicRules_,
-RicciScalarInvariant\[Rule]RRules_,
-xx___
-]]:=Tensor[
-xx,
-"Coordinates"\[Rule]coords,
-Row[{name,UpOrDown[\[Mu]T],UpOrDown[\[Nu]T]}]\[Rule]matrix,
-StartIndex\[Rule]si,
-(ChrisRules/.{ChristoffelComponents[SuperMinus[\[Mu]s_],SubMinus[\[Alpha]s_],SubMinus[\[Beta]s_]]\[RuleDelayed]Row[{"\[CapitalGamma]",Column[{coords\[LeftDoubleBracket]\[Mu]s-si+1\[RightDoubleBracket],Null}],Column[{Null,coords\[LeftDoubleBracket]\[Alpha]s-si+1\[RightDoubleBracket]}],Column[{Null,coords\[LeftDoubleBracket]\[Beta]s-si+1\[RightDoubleBracket]}]}]}),
-(RiemRules/.{RiemannComponents[SuperMinus[\[Mu]s_],SubMinus[\[Nu]s_],SubMinus[\[Alpha]s_],SubMinus[\[Beta]s_]]\[RuleDelayed]Row[{"R",Column[{coords\[LeftDoubleBracket]\[Mu]s-si+1\[RightDoubleBracket],Null}],Column[{Null,coords\[LeftDoubleBracket]\[Nu]s-si+1\[RightDoubleBracket]}],Column[{Null,coords\[LeftDoubleBracket]\[Alpha]s-si+1\[RightDoubleBracket]}],Column[{Null,coords\[LeftDoubleBracket]\[Beta]s-si+1\[RightDoubleBracket]}]}]}),
-RicRules/.{RicciComponents[SubMinus[\[Nu]s_],SubMinus[\[Beta]s_]]\[RuleDelayed]Row[{"R",Column[{Null,coords\[LeftDoubleBracket]\[Nu]s-si+1\[RightDoubleBracket]}],Column[{Null,coords\[LeftDoubleBracket]\[Beta]s-si+1\[RightDoubleBracket]}]}]},
-RRules/.{RicciScalar\[Rule]"R"}
-]; *)
+TensorComponents->mtx]]/;(((* check repeated indices *)\[Mu]1T[[1]]===\[Mu]2T[[1]])&&((* check one index up and one down *)Sgn[\[Mu]1T]Sgn[\[Mu]2T]===-1)&&((* check that both indices are abstract *)!NotAbstractIndex[\[Mu]1T,cooo,si])&&((* check that both indices are abstract *)!NotAbstractIndex[\[Mu]2T,cooo,si])&&TestIndices[\[Mu]1T]&&TestIndices[\[Mu]2T]);
 
 
 (* ::Input::Initialization:: *)
 (* Format: *)
-(* Appearance of non-Metric Tensor *)
 (* we display the TensorName and associated indices *)
 (* w/ TooltipDisplay *)
-Tensor/:Format[Tensor[
+Format[Tensor[
 xxx___,
-(* TensorType\[Rule]type_/;(type=!="Metric")*)
 TensorName->name_,
-Indices->\[Mu]T_List(*/;(Union[(CheckIndex[#]&&MatchQ[#\[LeftDoubleBracket]1\[RightDoubleBracket],_Symbol])&/@\[Mu]T]==={True})*),
-TooltipDisplay->display_/;(display=!=Null)
-]]:=Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],Which[Head[display]===List,Flatten[display],True,display](*,LabelStyle\[Rule]{Large}*)](*/;(Cases[{name},Del[_],\[Infinity]]==={})*);
+Indices->\[Mu]T_List,
+TooltipDisplay->display_/;(display=!=Null)&&(display=!=TensorComponents)
+]]:=
+Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],Which[Head[display]===List,Flatten[display],True,display],Sequence@@Which[((TooltipStyleNoPart[{xxx}])==={}),{},((TooltipStyleNoPart[{xxx}])=!={}),{TooltipStyle->(TooltipStyle[{xxx}])}]]
 (* w/o TooltipDisplay I of II *)
 (* Scalars, vectors and rank-2 tensors *)
-Tensor/:Format[Tensor[
-xxx___/;((Union[Flatten[Cases[{xxx},TooltipDisplay->mmm_,\[Infinity]]]]==={})||(Union[Flatten[Cases[{xxx},(TooltipDisplay->mmm_)->mmm,\[Infinity]]]]==={Null})),
-(* TensorType\[Rule]type_/;(type=!="Metric")*)
+Format[Tensor[
+xxx___/;(((Flatten[TooltipDisplayNoPart[{xxx}]]==={})||(Flatten[TooltipDisplayNoPart[{xxx}]]==={Null}))&&(TooltipDisplayNoPart[{xxx}]=!={TensorComponents})),
 TensorName->name_,
-Indices->\[Mu]T_List(*/;(Union[(CheckIndex[#]&&MatchQ[#\[LeftDoubleBracket]1\[RightDoubleBracket],_Symbol])&/@\[Mu]T]==={True})*),
+Indices->\[Mu]T_List,
 TensorComponents->ttM_,
-CoordinateSystem->coords_List
-]/;((* scalar, vector or rank 2 tensor *)(RemoveUnderBarredIndices[\[Mu]T]==={})||MatchQ[Dimensions[ttM],{Length[coords]}|{Length[coords],Length[coords]}])]:=Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],
-{MatrixForm[ttM],"Coordinates"->coords}];
+Coordinates->coords_List
+]/;((* scalar, vector or rank 2 tensor *)(RemoveUnderBarredIndices[\[Mu]T]==={})||MatchQ[Dimensions[ttM],{Length[coords]}|{Length[coords],Length[coords]}])]:=Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],{MatrixForm[ttM],"Coordinates"->coords},Sequence@@Which[((TooltipStyleNoPart[{xxx}])==={}),{},(TooltipStyleNoPart[{xxx}])=!={},{TooltipStyle->(TooltipStyle[{xxx}])}]]
 (* w/o TooltipDisplay II of II *)
 (* everything else *)
- Tensor/:Format[Tensor[
-xxx___/;((Union[Flatten[Cases[{xxx},TooltipDisplay->mmm_,\[Infinity]]]]==={})||(Union[Flatten[Cases[{xxx},(TooltipDisplay->mmm_)->mmm,\[Infinity]]]]==={Null})),
-(* TensorType\[Rule]type_/;(type=!="Metric")*)
+Format[Tensor[
+xxx___/;((Flatten[TooltipDisplayNoPart[{xxx}]]==={})||(Flatten[TooltipDisplayNoPart[{xxx}]]==={Null})&&(TooltipDisplayNoPart[{xxx}]=!={TensorComponents})),
 TensorName->name_,
-Indices->\[Mu]T_List(*/;(Union[(CheckIndex[#]&&MatchQ[#\[LeftDoubleBracket]1\[RightDoubleBracket],_Symbol])&/@\[Mu]T]==={True})*),
+Indices->\[Mu]T_List,
 TensorComponents->ttM_,
-CoordinateSystem->coords_List
+Coordinates->coords_List
 ]/;!((* scalar, vector or rank 2 tensor *)(RemoveUnderBarredIndices[\[Mu]T]==={})||MatchQ[Dimensions[ttM],{Length[coords]}|{Length[coords],Length[coords]}])]:=Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}];
-
-
-(* ::Input::Initialization:: *)
-(* Format: Appearance of non-Metric Tensor w/ Del[...Del[stuff w/o Del's]]: to do! *)
-(* we display the TensorName and associated indices *)
-(* w/ TooltipDisplay *)
-(* Tensor/:Format[Tensor[
+Format[
+Tensor[
 xxx___,
-TensorType\[Rule]type_/;type=!="Metric",
-TensorName\[Rule]name_,
-Indices\[Rule]\[Mu]T_List(*/;(Union[(CheckIndex[#]&&MatchQ[#\[LeftDoubleBracket]1\[RightDoubleBracket],_Symbol])&/@\[Mu]T]==={True})*),
-TooltipDisplay\[Rule]display_
-]]:=Module[{stuff,output,idx},
-Tooltip[Row[{name,Sequence@@(UpOrDown[#]&/@\[Mu]T)}],Which[Head[display]===List,Flatten[display],True,display](*,LabelStyle\[Rule]{Large}*)]
-]/;((Head[name]===Del));
-(* w/o TooltipDisplay *)
-Tensor/:Format[Tensor[
-xxx___/;(Union[Flatten[Cases[{xxx},TooltipDisplay\[Rule]mmm_,\[Infinity]]]]==={}),
-TensorType\[Rule]type_/;type=!="Metric",
-TensorName\[Rule]name_,
-Indices\[Rule]\[Mu]T_List(*/;(Union[(CheckIndex[#]&&MatchQ[#\[LeftDoubleBracket]1\[RightDoubleBracket],_Symbol])&/@\[Mu]T]==={True})*)
-]]:=Row[{name,Sequence@@(UpOrDown[#]&/@\[Mu]T)}]/;((Head[name]===Del)); *)
-(* TensorProduct of Tensors *)
-(* It is not possible to do something like Tensor/:TensorProduct[Times[t1___,mm_,t2___]]/;Head[mm]=!=Tensor:=... *)
-(* So we create ContractTensors below *)
+TooltipDisplay->TensorComponents,
+TensorName->name_,
+Indices->\[Mu]T_List,
+TensorComponents->ttM_,
+Coordinates->coords_List
+]]:=
+Which[(Flatten[TooltipStyleNoPart[{xxx}]]==={}),
+Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],NonZeroTensorComponents[name,
+\[Mu]T,
+ttM,
+coords]],
+(Flatten[TooltipStyleNoPart[{xxx}]]=!={}),
+Tooltip[Row[{FormatTensorName[name],Sequence@@(UpOrDown[#]&/@\[Mu]T)}],NonZeroTensorComponents[name,
+\[Mu]T,
+ttM,
+coords],TooltipStyle->TooltipStyle[{xxx}]]
+];
 
 
 (* ::Input::Initialization:: *)
-(* TensorSymmetry of Tensors *)
-Tensor/:TensorSymmetry[Tensor[stuff___]]:=TensorSymmetry[TensorComponents[Tensor[stuff]]];
+Tensor/:TensorWedge[t1_Tensor/;(RankNumber[t1]>0),t2_Tensor/;(RankNumber[t2]>0)]/;((TestFormVectorIndices[Join[Indices[t1],Indices[t2]]])&&(Coordinates[t1]===Coordinates[t2])):=t1/.{(Indices->idx_)->(Indices->Join[Indices[t1],Indices[t2]]),(TensorComponents->tc_)->(TensorComponents->Normal[TensorComponents[t1]\[TensorWedge]TensorComponents[t2]]),
+(TensorName->tn_)->(TensorName->TensorWedge[Sequence@@(TensorName[#]&/@{t1,t2})])}
+
+
+(* ::Input::Initialization:: *)
+Tensor/:SymmetrizedArray[t_Tensor]:=Module[{output,newts,tc,sa},
+tc=TensorComponents[t];
+sa=SymmetrizedArray[tc];
+output=t/.{(TensorComponents->xxx___)->(TensorComponents->sa)};
+newts=TensorSymmetry[sa];
+Which[(Cases[t,(TensorSymmetry->ts_)->ts]==={}),Append[output,TensorSymmetry->newts],True,output/.(TensorSymmetry->oldts_)->(TensorSymmetry->newts)]]
+
+
+(* ::Input::Initialization:: *)
+TensorComponentsNoPart[m_/;TestExpressionForm[m]]:={m};
+
+
+(* ::Input::Initialization:: *)
+Coordinates[(t_Tensor|t_List/;(Cases[t,(a_-> b_):> (a-> b),{1}]=!={}))]:=Cases[t,(Coordinates->output_):>output,{1}][[1]];
+CoordinatesNoPart[(t_Tensor|t_List/;(Cases[t,(a_-> b_):>  (a-> b),{1}]=!={}))]:=Module[{mmm},Cases[t,(Coordinates->mmm_)->mmm,1]]
+Coordinates[t_Tensor,coords_List]:=t/.(Coordinates->mmm_)->(Coordinates->coords)
+
+
+(* ::Input::Initialization:: *)
+Indices[stuff_]/;((*Scalar Expression Form*)TestExpressionForm[stuff]):={}
+IndicesNoPart[stuff_]/;((*Scalar Expression Form*)TestExpressionForm[stuff]):={{}}
+
+
+(* ::Input::Initialization:: *)
+TensorName[t_Tensor]:=Module[{mmm},Cases[t,(TensorName->mmm_)->mmm,1][[1]]];
+TensorName[stuff_/;TestExpressionForm[stuff]]:=ToString[stuff,InputForm];
+TensorNameNoPart[stuff_/;TestExpressionForm[stuff]]:={ToString[stuff,InputForm]};
+TensorName[(t_List)]:=Module[{},Apply[TensorProduct,t/.{ttt_Tensor:>TensorName[ttt] }]];
+TensorName[(t_Times|t_Plus)]:=Module[{},t/.{ttt_Tensor:>TensorName[ttt] }];
+
+
+(* ::Input::Initialization:: *)
+OperatorNullList[a_(*Function Name*)]:=a[x1___,{},x2___/;(Cases[{x2},Tensor,{1}]==={})]:=1
+OperatorNullList[TensorsProduct]
+OperatorNullList[TensorComponents]
+OperatorNullList[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorDistributeOverPlus[a_(*Function Name*)]:=a[x1___,t_Plus,x2___/;(Cases[{x2},Tensor,{1}]==={})]:=Apply[Plus,(a[Sequence@@{x1,#,x2}]&/@(Apply[List,t]))];
+OperatorDistributeOverPlus[TensorsProduct]
+OperatorDistributeOverPlus[TensorComponents]
+OperatorDistributeOverPlus[PartialD];
+OperatorDistributeOverPlus[CovariantD];
+OperatorDistributeOverPlus[LieD];
+OperatorDistributeOverPlus[LieBracket];
+OperatorDistributeOverPlus[ExteriorD];
+Unprotect[Conjugate];
+OperatorDistributeOverPlus[Conjugate];
+Protect[Conjugate];
+OperatorDistributeOverPlus[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorDistributeOverPlus[LT]
+OperatorExpansion[a_(*Function Name*)]:=Module[{},a[x1___,(t_Times),x2___/;(Cases[{x2},Tensor,{1}]==={})]/;(Cases[Apply[List,t],Plus[tt_/;!TestExpressionForm[tt],___],{1}]=!={}):=a[x1,Expand[t],x2];
+
+a[x1___,(t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={}))),x2___/;(Cases[{x2},Tensor,{1}]==={})]/;(Cases[t,Plus[tt_/;!TestExpressionForm[tt],___],{1}]=!={}):=Module[{LTttt,output1},
+LTttt=Apply[LT,t];
+output1=a[x1,LTttt,x2];
+output1=output1/.{LT-> List}
+];
+];
+OperatorExpansion[TensorsProduct]
+OperatorExpansion[TensorComponents]
+OperatorExpansion[ContractTensors]
+OperatorExpansion[LieD]
+
+
+(* ::Input::Initialization:: *)
+OperatorDistribute[a_(*Function Name*)]:=a[x1___,(t_NonCommutativeMultiply),x2___/;(Cases[{x2},Tensor,{1}]==={})]/;(Cases[Apply[List,t],Plus[tt_/;!TestExpressionForm[tt],___],{1}]=!={}):=a[x1,Distribute[t],x2];
+
+OperatorDistribute[TensorsProduct]
+OperatorDistribute[TensorComponents]
+OperatorDistribute[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorFactorOutScalar[a_(*Function Name*),pos___/;If[({pos}==={}),True,(IntegerQ[pos]&&(pos>0))]]:=Module[{t},a[x1___/;If[({pos}==={}),True,(Length[{x1}]===(pos-1))],(t_Times),x2___/;(Cases[{x2},Tensor,{1}]==={})]/;(Cases[Apply[List,t],Plus[tt_/;!TestExpressionForm[tt],___],{1}]==={})&&(Union[(TestSingleTensorTensor/@(Apply[List,t]))]=!={True}):=Module[{allTensors,scalarexpr,scalartensor,FunctionOfScalarTensor,Listmm=(Apply[List,t]),FunctionOfTensorTensor},
+scalarexpr=Cases[Listmm,(se_/;TestExpressionForm[se]),{1}];
+scalartensor=Cases[Listmm,(st_/;TestScalarTensor[st]),{1}];
+FunctionOfScalarTensor=Cases[Listmm,(func_/;((Head[func]=!=Tensor)&&(Head[func]=!=Plus)&&(Head[func]=!=Times)&&(Union[TestScalarTensor[#]&/@Cases[func,_Tensor,Infinity]]==={True}))),{1}];
+FunctionOfTensorTensor=Cases[Listmm,(fott_/;((Head[fott]=!=Tensor)&&(Head[fott]=!=Plus)&&(Head[fott]=!=Times)&&!(Union[TestScalarTensor[#]&/@Cases[fott,_Tensor,Infinity]]==={True})&&!TestExpressionForm[fott])),{1}];
+allTensors=Complement[Listmm,scalarexpr,scalartensor,FunctionOfScalarTensor,FunctionOfTensorTensor];
+(Times@@scalarexpr) (Times@@(TensorComponents[#]&/@scalartensor))(Times@@(TensorComponents[#]&/@FunctionOfScalarTensor)) (Times@@(TensorComponents[#]&/@FunctionOfTensorTensor)) a[x1,(Times@@allTensors),x2]
+ ];
+
+a[x1___/;If[({pos}==={}),True,(Length[{x1}]===(pos-1))],((t_List/;((t=!={})&&(!MatchQ[t,{Repeated[Rule[_,_]]}])))|t_NonCommutativeMultiply),x2___/;(Cases[{x2},Tensor,{1}]==={})]/;(Cases[t,Plus[tt_/;!TestExpressionForm[tt],___],{1}]==={})&&((Union[(TestSingleTensorTensor/@(Apply[List,t]))]=!={True})&&!(MatchQ[t,{___,TensorsProduct[___,Tensor],___}])):=Module[{allTensors,scalarexpr,scalartensor,FunctionOfScalarTensor,FunctionOfTensorTensor,TimesScalarTensor,TimesScalarTensorR,TimesScalarTensorTensor,TimesScalarTensorScalar},
+scalarexpr=Cases[t,(se_/;TestExpressionForm[se]),{1}];
+scalartensor=Cases[t,(st_/;TestScalarTensor[st]),{1}];
+FunctionOfScalarTensor=Cases[t,(func_/;((Head[func]=!=Tensor)&&(Head[func]=!=Plus)&&(Head[func]=!=NonCommutativeMultiply)&&(Head[func]=!=Times)&&(Union[TestScalarTensor[#]&/@Cases[func,_Tensor,Infinity]]==={True}))),{1}];
+FunctionOfTensorTensor=Cases[t,(fott_/;((Head[fott]=!=Tensor)&&(Head[fott]=!=Plus)&&(Head[fott]=!=NonCommutativeMultiply)&&(Head[fott]=!=Times)&&!(Union[TestScalarTensor[#]&/@Cases[fott,_Tensor,Infinity]]==={True})&&!TestExpressionForm[fott])),{1}];
+allTensors=Replace[t,((#-> Nothing)&/@scalarexpr),{1}];
+allTensors=Replace[allTensors,((#-> Nothing)&/@scalartensor),{1}];
+allTensors=Replace[allTensors,((#-> Nothing)&/@FunctionOfScalarTensor),{1}];
+allTensors=Replace[allTensors,((#-> Nothing)&/@FunctionOfTensorTensor),{1}];
+TimesScalarTensor=Cases[allTensors,(_Times|_NonCommutativeMultiply),{1}];
+TimesScalarTensorTensor=Cases[(Apply[List,#]&/@TimesScalarTensor),(tt_/;(Head[tt]===Tensor)&&(RankNumber[tt]>0)),{2}];
+TimesScalarTensorScalar=Replace[Apply[List,TimesScalarTensor],((#-> 1)&/@TimesScalarTensorTensor),Infinity];
+TimesScalarTensorR=Thread[TimesScalarTensor->TimesScalarTensorTensor];
+(Times@@scalarexpr) (Times@@(TensorComponents[#]&/@scalartensor))(Times@@(TensorComponents[#]&/@FunctionOfScalarTensor)) (Times@@(TensorComponents[#]&/@FunctionOfTensorTensor))(Times@@(TensorComponents[#]&/@TimesScalarTensorScalar))a[x1,Which[(TimesScalarTensor==={}),allTensors,True,Replace[allTensors,TimesScalarTensorR,{1}]],x2]
+ ];
+];
+OperatorFactorOutScalar[TensorsProduct,1]
+OperatorFactorOutScalar[TensorComponents,1]
+OperatorFactorOutScalar[ContractTensors,1]
+OperatorFactorOutScalar[LieD,1];
+
+
+(* ::Input::Initialization:: *)
+OperatorRemoveSingleComponentList[a_(*Function Name*)]:=a[x1___,{t_Tensor/;(t=!=Tensor)},x2___/;(Cases[{x2},Tensor,{1}]==={})]:=a[x1,t,x2];
+
+OperatorRemoveSingleComponentList[TensorsProduct]
+OperatorRemoveSingleComponentList[TensorComponents]
+OperatorRemoveSingleComponentList[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorThreadThroughFunction[a_(*Function Name*)]:=a[x1___/;Which[(x1===Null),True,True,TestExpressionForm[x1]],func_/;((Head[func]=!=NonCommutativeMultiply)&&(Head[func]=!=LT)&&(Head[func]=!=a)&&(Head[func]=!=List)&&(Head[func]=!=Tensor)&&(Head[func]=!=Plus)&&(Head[func]=!=Times)&&(Union[TestScalarTensor[#]&/@Cases[func,_Tensor,Infinity]]==={True})),x2___/;((Cases[{x2},Tensor,{1}]==={})&&Which[(x2===Null),True,True,TestExpressionForm[x2]])]:=Replace[func,ContentWithTensor_/;(!TestExpressionForm[ContentWithTensor]):>a[x1,ContentWithTensor,x2],{1}];
+OperatorThreadThroughFunction[TensorsProduct]
+OperatorThreadThroughFunction[TensorComponents]
+OperatorThreadThroughFunction[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorTensorReturnItself[a_(*Function Name*)]:=a[(t_Tensor/;(t=!=Tensor))]:=t;
+OperatorTensorReturnItself[TensorsProduct]
+OperatorTensorReturnItself[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorExpressionFormReturnItself[a_(*Function Name*)]:=a[(t_/;(TestExpressionForm[t]&&(t=!=Tensor)))]:=t;
+OperatorExpressionFormReturnItself[TensorsProduct]
+OperatorExpressionFormReturnItself[TensorComponents]
+OperatorExpressionFormReturnItself[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OperatorTensorsProduct[a_(*Function Name*)]:=a[x1___,(t_Times|(t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})&&TestTensorsProduct[t]))|t_NonCommutativeMultiply),x2___/;(Cases[{x2},Tensor,{1}]==={})]:=Module[
+{tensorproduct,allindices,tensornames,listt=Apply[List,t],ii},
+(* perform a tensor product *)
+tensorproduct=TensorProduct[Sequence@@(TensorComponents/@listt)];
+(* Join all indices to form index structure of Tensor Product *)
+allindices=Join[Sequence@@(Indices/@listt)];
+(* Tensor names *)
+tensornames=TensorName[listt];
+(* output Tensor will inherit properties of the first Tensor *)
+a[x1,((listt)[[1]]/.{
+(TensorName->xxx_)->(TensorName->tensornames),
+(Indices->xxx_)->(Indices->allindices),
+(TensorComponents->xxxxx_)->(TensorComponents->tensorproduct)}),x2]
+];
+OperatorTensorsProduct[TensorsProduct]
+OperatorTensorsProduct[TensorComponents]
+
+
+(* ::Input::Initialization:: *)
+OperatorContractThroughFunction[a_(*Function Name*)]:=a[x1___,func_/;((Head[func]=!=NonCommutativeMultiply)&&(Head[func]=!=TensorsProduct)&&(Head[func]=!=LT)&&(Head[func]=!=a)&&(Head[func]=!=List)&&(Head[func]=!=Tensor)&&(Head[func]=!=Plus)&&(Head[func]=!=Times)&&!(Union[TestScalarTensor[#]&/@Cases[func,_Tensor,Infinity]]==={True})&&!TestExpressionForm[func]),x2___/;(Cases[{x2},Tensor,{1}]==={})]:=Replace[func,ContentWithTensor_/;(!TestExpressionForm[ContentWithTensor]):>a[x1,TensorsProduct[ContentWithTensor],x2],{1}];
+OperatorContractThroughFunction[TensorsProduct]
+OperatorContractThroughFunction[TensorComponents]
+OperatorContractThroughFunction[ContractTensors]
+
+
+(* ::Input::Initialization:: *)
+OutputBecomesOneTensor[a_(*Function Name*),namerule_/;(Cases[{namerule},TensorName,Infinity]=!={})]:=Module[{},
+a[x1___,wholeBunchOfStuff_/;!TestExpressionForm[wholeBunchOfStuff],x2___,Tensor]:=Module[{FirstOutput,AllTensor,FirstTensor,output,name,indices},
+FirstOutput=a[x1,wholeBunchOfStuff,x2];
+AllTensor=Cases[{wholeBunchOfStuff},_Tensor,Infinity];
+FirstTensor=AllTensor[[1]];
+Which[(Cases[{FirstOutput},(t_/;TestTensorTensor[t]),Infinity]==={}),
+indices={},
+True,
+indices=Cases[{FirstOutput},((Indices->(idx_/;(idx=!={})))-> idx ),Infinity][[1]]];
+name=namerule/.{(TensorName-> TensorName[wholeBunchOfStuff])};
+Which[TestExpressionForm[FirstOutput],
+output=Indices[FirstTensor,indices];
+output=TensorName[output,name];
+output=output/.{(TensorComponents->mx_)->(TensorComponents->FirstOutput)},
+True,
+output=TensorName[FirstTensor,name];
+output=output/.{(TensorComponents->mx_)->(TensorComponents->TensorComponents[FirstOutput])};
+output=Indices[output,indices]
+]
+];
+
+a[x1___,wholeBunchOfStuff_/;!TestExpressionForm[wholeBunchOfStuff],x2___,Tensor,TensorName-> username_]:=Module[{FirstOutput,AllTensor,FirstTensor,output,name,indices},
+FirstOutput=a[x1,wholeBunchOfStuff,x2];
+AllTensor=Cases[{wholeBunchOfStuff},_Tensor,Infinity];
+FirstTensor=AllTensor[[1]];
+Which[(Cases[{FirstOutput},(t_/;TestTensorTensor[t]),Infinity]==={}),
+indices={},
+True,
+indices=Cases[{FirstOutput},((Indices->(idx_/;(idx=!={})))-> idx ),Infinity][[1]]];
+Which[TestExpressionForm[FirstOutput],
+output=Indices[FirstTensor,{}];
+output=TensorName[output,username];
+output=output/.{(TensorComponents->mx_)->(TensorComponents->FirstOutput)},
+True,
+output=TensorName[FirstTensor,username];
+output=output/.{(TensorComponents->mx_)->(TensorComponents->TensorComponents[FirstOutput])};
+output=Indices[output,indices]
+]
+];
+];
+OutputBecomesOneTensor[TensorsProduct,TensorName];
+
+
+(* ::Input::Initialization:: *)
+OperatorProductRule[a_(*Function Name*),pos___/;If[({pos}==={}),True,(IntegerQ[pos]&&(pos>0))]]:=
+Module[{},
+a[x1___/;If[({pos}==={}),True,(Length[{x1}]===(pos-1))],t_Times/;((Union[(Head/@(List@@t))]=!={Tensor})&&(!TestExpressionForm[t])),x2___]:=Module[{allTensors,therest,part1,part2},
+allTensors=Apply[Times,Cases[(Apply[List,t]),tt_/;TestTensorTensor[tt]]];
+therest=Apply[Times,DeleteCases[(Apply[List,t]),tt_/;TestTensorTensor[tt]]];
+part1=a[Sequence@@{x1,allTensors,x2}];
+part2=a[Sequence@@{x1,therest,x2}];
+part1=Which[ZeroTensorQ[part1],0,True,part1];
+part2=Which[ZeroTensorQ[part2],0,True,part2];
+therest part1+TensorsProduct[allTensors part2]];
+
+a[x1___,t_Times/;(Union[(Head/@(Apply[List,t]))]==={Tensor}),x2___]:=a[Sequence@@{x1,TensorsProduct[t,Tensor],x2}];]
+
+OperatorProductRule[PartialD];
+OperatorProductRule[CovariantD];
+OperatorProductRule[LieD,2];
+OperatorProductRule[LieBracket];
+OperatorProductRule[ExteriorD];
+
+
+(* ::Input::Initialization:: *)
+OperatorThreadThroughTimes[a_(*Function Name*)]:=a[x1___,(t_Times),x2___/;(Cases[{x2},Tensor,{1}]==={})]:=Times@@(a[x1,#,x2]&/@(Apply[List,t]));
+
+Unprotect[Conjugate];
+OperatorThreadThroughTimes[Conjugate];
+Protect[Conjugate];
+
+
+(* ::Input::Initialization:: *)
+OperatorSplitByCoordinates[a_(*Function Name*)]:=a[x1___,(t_Times|(t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})&&!(Length[Union[Coordinates/@Cases[Apply[List,t],Tensor[___]]]]===1)&&(* check tensor product *)(* everybody is a Tensor *)(Union[Head/@(Apply[List,t])]==={Tensor})&&
+(*All scalar Tensors have already been factored out.*)(Cases[(Apply[List,t]),(st_/;TestScalarTensor[st]),{1}]==={})&&(Length[Apply[List,t]]=!=1)))|t_NonCommutativeMultiply),x2___/;(Cases[{x2},Tensor,{1}]==={})]:=Module[
+{listt=Apply[List,t],ii,ALLCoods,coordsTypes,SplitT},
+(* perform a tensor product *)
+ALLCoods=Union[Coordinates[#]&/@listt];
+coordsTypes=Length[ALLCoods];
+SplitT=Table[(If[(Coordinates[#]===ALLCoods[[ii]]),#,Nothing]&/@listt),{ii,1,coordsTypes}];
+Times@@(a[x1,#,x2]&/@SplitT)
+];
+
+OperatorSplitByCoordinates[ContractTensors];
+
+
+(* ::Input::Initialization:: *)
+TensorComponentsManipulation[name_]:=(Tensor/:name[t_Tensor]:=t/.{(TensorComponents-> comp_):> (TensorComponents-> name[comp])});
+
+TensorComponentsManipulation[Expand];
+TensorComponentsManipulation[ExpToTrig];
+TensorComponentsManipulation[TrigToExp];
+TensorComponentsManipulation[TrigReduce];
+TensorComponentsManipulation[ComplexExpand];
+TensorComponentsManipulation[FunctionExpand];
+TensorComponentsManipulation[PowerExpand];
+
+
+(* ::Input::Initialization:: *)
+ExtractFunction[fn_(*Function Name*)]:=fn[(t_Tensor|t_List/;(Cases[t,(a_-> b_):> (a-> b),{1}]=!={}))]:=Cases[t,(fn->output_):>output,{1}][[1]];
+
+ExtractFunction[TensorComponents]
+ExtractFunction[Indices]
+ExtractFunction[StartIndex]
+ExtractFunction[TensorType]
+ExtractFunction[TooltipDisplay]
+Unprotect[TooltipStyle];
+ExtractFunction[TooltipStyle]
+Protect[TooltipStyle];
+
+
+(* ::Input::Initialization:: *)
+ExtractFunctionNoPart[fn_(*Function Name*)]:=Symbol[ToString[fn]<>"NoPart"][(t_Tensor|(t_List/;(Cases[t,(a_-> b_):> (a-> b),{1}]=!={})))]:=Cases[t,(fn->output_):>output,{1}];
+
+ExtractFunctionNoPart[TensorComponents]
+ExtractFunctionNoPart[Indices]
+ExtractFunctionNoPart[StartIndex]
+ExtractFunctionNoPart[TensorName]
+ExtractFunctionNoPart[TensorType]
+ExtractFunctionNoPart[TooltipDisplay]
+Unprotect[TooltipStyle];
+ExtractFunctionNoPart[TooltipStyle]
+Protect[TooltipStyle];
+
+
+(* ::Input::Initialization:: *)
+EndowFunction[fn_(*Function Name*),type___]:=Which[type===Null,fn[t_Tensor,NewValue_]:=Module[{OldValue},Which[(Cases[t,(fn->OldValue_)->OldValue]==={}),Append[t,fn->NewValue],True,t/.(fn->OldValue_)->(fn->NewValue)]],type=!=Null,fn[t_Tensor,NewValue_type]:=Module[{OldValue},Which[(Cases[t,(fn->OldValue_)->OldValue]==={}),Append[t,fn->NewValue],True,t/.(fn->OldValue_)->(fn->NewValue)]]]
+
+EndowFunction[Indices,List]
+EndowFunction[StartIndex,Integer]
+EndowFunction[TensorName]
+EndowFunction[TensorType]
+EndowFunction[TooltipDisplay]
+Unprotect[TooltipStyle];
+EndowFunction[TooltipStyle]
+Protect[TooltipStyle];
+
+
+(* ::Input::Initialization:: *)
+(*The difference between ExtractEndowFunctionWithDefaultValue and normal ExtractFunction is that it allows developers to assign the default value for new invented property easily. Just one place, as the second argument here. No need to assign default Function-by-Function. The defualt value means when user extract property from a Tensor without that property stored, the output is assigned to be that default one. The assigned value should be "harmless". E.g., it's not wrong to provide Null List as the default value of TensorAssumption. It's harmless to provide Simplify as the default value of TensorOperator. 
+There are a few cases you want to use this ExtractEndowFunctionWithDefaultValue rule: 1. The default value is harmless. 2. Every Function is expected to have the same default value. 3. The property is not mandatory for users as input argument of Tensor output Function. 4. If we want to modify Extract Function in specified codes, e.g., TensorOperator in ZeroTensorQ. Then the code will be not concise and lengthy, especially if we are going to extract the property frequently. 
+Ther are a few case you want to use normal extract function and edit default value Function-by-Function: 1. The default value is sensitive if it's mathematically wrong. 2. the default values varies for different Function. 3. We can modify the extract Function in code if we don't extract frequently.
+*)
+ExtractEndowFunctionWithDefaultValue[fn_(*Function Name*),DefualtValue_,type___]:=Module[{},
+fn[(t_Tensor|(t_List/;(Cases[t,(a_-> b_):> (a-> b),{1}]=!={})))]:=Module[{output,result},result=Cases[t,(fn->output_):>output,{1}];
+Which[(result==={}),DefualtValue,True,result[[1]]]
+];
+Symbol[ToString[fn]<>"NoPart"][(t_Tensor|(t_List/;(Cases[t,(a_-> b_):> (a-> b),{1}]=!={})))]:=Module[{output,result},result=Cases[t,(fn->output_):>output,{1}];
+Which[(result==={}),{DefualtValue},True,result]
+];
+Which[type===Null,fn[t_Tensor,NewValue_]:=Module[{OldValue},Which[(Cases[t,(fn->OldValue_)->OldValue]==={}),Append[t,fn->NewValue],True,t/.(fn->OldValue_)->(fn->NewValue)]],type=!=Null,fn[t_Tensor,NewValue_type]:=Module[{OldValue},Which[(Cases[t,(fn->OldValue_)->OldValue]==={}),Append[t,fn->NewValue],True,t/.(fn->OldValue_)->(fn->NewValue)]]];]
+
+ExtractEndowFunctionWithDefaultValue[TensorAssumption,{},List]
+ExtractEndowFunctionWithDefaultValue[TensorOperator,Simplify]
+
+
+(* ::Input::Initialization:: *)
+ToExpressionForm[tt_Tensor]:=Module[{coord,dcoords,delcoords,indices,idxl,mx,mx2,mx2basis,mx2component,output,dim,basislist,ilist,i,j,sequencelist,isequencelist,a,b,sa,IndptElements,indptN,position,indptEleValue,iilistValue,countlist},
+coord=Coordinates[tt];
+dcoords=(\[DifferentialD]#)&/@coord;
+delcoords=(\[Del]#)&/@coord;
+indices=RemoveUnderBarredIndices[Indices[tt]];
+idxl=RankNumber[indices];
+dim=Length[coord];
+basislist=Table[Which[Sgn[indices[[i]]]===1,delcoords,Sgn[indices[[i]]]===-1,dcoords],{i,1,idxl}];
+ilist=Table[Unique[i],{b,1,idxl}];
+sequencelist=Quiet[Table[Part[basislist[[a]],ilist[[a]]],{a,1,idxl}]];
+Which[(TensorSymmetry[tt][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[tt]]]]]),
+sa=SymmetrizedArray[TensorComponents[tt]];
+IndptElements=Drop[SymmetrizedArrayRules[sa],-1];
+indptN=Length[IndptElements];
+position=Table[IndptElements[[i,1]],{i,indptN}];
+indptEleValue=Table[IndptElements[[i,2]],{i,indptN}];
+iilistValue=Thread[(ilist->#)]&/@position;
+Plus@@Table[indptEleValue[[i]] (TensorWedge@@(sequencelist/.iilistValue[[i]])),{i,indptN}]
+,(TensorSymmetry[tt][[1]]===Symmetric[Range[Length[RemoveUnderBarredIndices[Indices[tt]]]]]),
+sa=SymmetrizedArray[TensorComponents[tt]];
+IndptElements=Drop[SymmetrizedArrayRules[sa],-1];
+indptN=Length[IndptElements];
+position=Table[IndptElements[[i,1]],{i,indptN}];
+indptEleValue=Table[IndptElements[[i,2]],{i,indptN}];
+iilistValue=Thread[(ilist->#)]&/@position;
+Plus@@Table[countlist=Counts[position[[i]]];Multinomial[Sequence@@Table[countlist[[j]],{j,Length[countlist]}]] indptEleValue[[i]] (Times@@(sequencelist/.iilistValue[[i]])),{i,indptN}]
+,True,
+isequencelist={#,1,dim}&/@ilist;Plus@@Flatten[Table[TensorComponents[tt][[Sequence@@ilist]] TensorProduct[Sequence@@sequencelist],Evaluate[Sequence@@isequencelist]]]]
+];
+
+
+(* ::Input::Initialization:: *)
+ToTensorComponents[stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]==={})&&!TestSymmetricTensorExpressionForm[stuff]),opts:OptionsPattern[]]:=Module[{tpexpand,dcoords,delcoords,idxl,dim,basislist,ilist,sequencelist,isequencelist,output,i,b,a,coord,CasesTP,CasesTPFirstList,basissgn},
+coord=OptionValue[Coordinates];
+tpexpand=stuff//TensorExpand;
+dcoords=(\[DifferentialD]#)&/@coord;
+delcoords=(\[Del]#)&/@coord;
+CasesTP=Cases[{tpexpand},TensorProduct[a_,___]/;MatchQ[a,(\[DifferentialD]__|\[Del]__)],Infinity];
+CasesTPFirstList=Apply[List,First[CasesTP]];
+basissgn=BasisSgn[#]&/@CasesTPFirstList;
+idxl=Length[basissgn];
+dim=Length[coord];
+basislist=Table[Which[basissgn[[i]]===1,delcoords,basissgn[[i]]===-1,dcoords],{i,1,idxl}];
+ilist=Table[Unique[i],{b,1,idxl}];
+sequencelist=Quiet[Table[Part[basislist[[a]],ilist[[a]]],{a,1,idxl}]];
+isequencelist={#,1,dim}&/@ilist;
+output=Table[Coefficient[tpexpand,TensorProduct[Sequence@@sequencelist]],Evaluate[Sequence@@isequencelist]]
+];
+
+ToTensorComponents[
+stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]==={})&&TestSymmetricTensorExpressionForm[stuff]),opts:OptionsPattern[]]:=Module[{texpand,dcoords,delcoords,idxl,dim,basislist,ilist,sequencelist,isequencelist,output,i,b,a,coord,\[Epsilon]downpower,\[Epsilon]uppower,\[Epsilon],sgn},
+coord=OptionValue[Coordinates];
+texpand=stuff//Expand;
+dcoords=(\[DifferentialD]#)&/@coord;
+delcoords=(\[Del]#)&/@coord;
+\[Epsilon]downpower=(texpand/.(\[Del]a_)->(\[Epsilon] \[Del]a))/texpand//Simplify;
+\[Epsilon]uppower=(texpand/.(\[DifferentialD]a_)->(\[Epsilon] \[DifferentialD]a))/texpand//Simplify;
+Which[(\[Epsilon]uppower===1)&&MatchQ[\[Epsilon]downpower,Power[\[Epsilon],_]],sgn=-1;idxl=Cases[{\[Epsilon]downpower},Power[\[Epsilon],idxl_]->idxl][[1]];,(\[Epsilon]downpower===1)&&MatchQ[\[Epsilon]uppower,Power[\[Epsilon],_]],sgn=+1;idxl=Cases[{\[Epsilon]uppower},Power[\[Epsilon],idxl_]->idxl][[1]];,(\[Epsilon]uppower===1)&&(\[Epsilon]downpower===\[Epsilon]),sgn=-1;idxl=1;,(\[Epsilon]downpower===1)&&(\[Epsilon]uppower===\[Epsilon]),sgn=+1;idxl=1;];
+dim=Length[coord];
+basislist=Which[(sgn===1),Table[dcoords,{i,1,idxl}],(sgn===-1),Table[delcoords,{i,1,idxl}]];
+ilist=Table[Unique[i],{b,1,idxl}];
+sequencelist=Quiet[Table[Part[basislist[[a]],ilist[[a]]],{a,1,idxl}]];
+isequencelist={#,1,dim}&/@ilist;
+output=Table[1/(Permutations[sequencelist]//Length) Coefficient[texpand,Times[Sequence@@sequencelist]],Evaluate[Sequence@@isequencelist]]
+];
+
+ToTensorComponents[stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]=!={})),opts:OptionsPattern[]]:=Module[{twteProduct,dcoords,delcoords,idxl,dim,basislist,ilist,sequencelist,isequencelist,output,i,b,a,coord},
+twteProduct=(stuff//TensorExpand)//WedgeExpand;
+ToTensorComponents[twteProduct,Coordinates->OptionValue[Coordinates]]
+];
+
+Unprotect[TensorProduct];
+TensorProduct[x1___,Times[(\[DifferentialD]coord_),x3___/;(TestExpressionForm[Unique[a][x3]]&&(Cases[{x3},(\[DifferentialD]a_)-> a,Infinity]==={})&&(Cases[{x3},(\[Del]a_)-> a,Infinity]==={}))],x2___]:=(Times@@{x3}) TensorProduct[x1,\[DifferentialD]coord,x2];
+
+TensorProduct[x1___,Times[(\[Del]coord_),x3___/;(TestExpressionForm[Unique[a][x3]]&&(Cases[{x3},(\[DifferentialD]a_)-> a,Infinity]==={})&&(Cases[{x3},(\[Del]a_)-> a,Infinity]==={}))],x2___]:=(Times@@{x3}) TensorProduct[x1,\[Del]coord,x2];
+Protect[TensorProduct];
+
+
+(* ::Input::Initialization:: *)
+WedgeExpand[tw_/;((Head[tw]=!=TensorWedge)&&(Cases[{tw},TensorWedge[__],Infinity]=!={}))]:=tw/.{TensorWedge[xxx___]:> WedgeExpand[TensorWedge[xxx]]};
+
+Unprotect[TensorWedge];
+TensorWedge[x1___,Times[(\[DifferentialD]coord_),x3___/;(TestExpressionForm[Unique[a][x3]]&&(Cases[{x3},(\[DifferentialD]a_)-> a,Infinity]==={})&&(Cases[{x3},(\[Del]a_)-> a,Infinity]==={}))],x2___]:=(Times@@{x3}) TensorWedge[x1,\[DifferentialD]coord,x2];
+
+TensorWedge[x1___,Times[(\[Del]coord_),x3___/;(TestExpressionForm[Unique[a][x3]]&&(Cases[{x3},(\[DifferentialD]a_)-> a,Infinity]==={})&&(Cases[{x3},(\[Del]a_)-> a,Infinity]==={}))],x2___]:=(Times@@{x3}) TensorWedge[x1,\[Del]coord,x2];
+Protect[TensorWedge];
 
 
 (* ::Input::Initialization:: *)
 (* Entering a geometry *)
-(* I of II: Metric takes in a specific metric and CoordinateSystem, computes Christoffel symbols,Riemann, Ricci tensor and scalar,and returns a Tensor containing these computations. *)
-Metric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],matrix_/;(MatchQ[Dimensions[matrix],{nn_,nn_}]&&(Head[matrix]===List)),opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]||MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]):=Tensor[
+(* I of II: Metric takes in a specific metric and Coordinates, computes Christoffel symbols,Riemann, Ricci tensor and scalar,and returns a Tensor containing these computations. *)
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),matrix_/;(MatchQ[Dimensions[matrix],{nn_,nn_}]&&(Head[matrix]===List)),opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]||MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]):=Tensor[
 TensorType->"Metric",
-CoordinateSystem->OptionValue[CoordinateSystem],
+Coordinates->OptionValue[Coordinates],
 TensorName->OptionValue[TensorName],
 StartIndex->OptionValue[StartIndex],
 ChristoffelOperator->OptionValue[ChristoffelOperator],
 RiemannOperator->OptionValue[RiemannOperator],
 RicciOperator->OptionValue[RicciOperator],
 RicciScalarOperator->OptionValue[RicciScalarOperator],
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->OptionValue[TooltipStyle],
 Indices->{\[Mu]T,\[Nu]T},
-TensorComponents->matrix
+TensorComponents->(matrix//OptionValue[MetricOperator]),
+FlatMetric->OptionValue[FlatMetric],
+OrthonormalFrameField->OptionValue[OrthonormalFrameField],
+InverseOrthonormalFrameField->OptionValue[InverseOrthonormalFrameField],
+OrthonormalFrameFieldOperator->OptionValue[OrthonormalFrameFieldOperator],
+OrthonormalFrameFieldIndices->OptionValue[OrthonormalFrameFieldIndices],
+TensorAssumption-> OptionValue[TensorAssumption],
+TensorOperator-> OptionValue[TensorOperator]
 ]/;((Head[OptionValue[StartIndex]]===Integer)&&(OptionValue[StartIndex]>=0));
 (* II of II: Same as above, except we allow the metric to be entered in terms of differentials \[DifferentialD]t, \[DifferentialD]x, etc. *)
-(* For now we only allow for lower indices; we need to find a way to let the user enter \!\(
-\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]s\) *)
-Metric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],matrix_,opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]):=Module[
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),matrix_/;TestExpressionForm[matrix],opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]):=Module[
 {MetricM,\[Mu],\[Nu],dcoords,lgth},
 (* convert the expression matrix to a dim. x dim. List matrix *)
-lgth=Length[OptionValue[CoordinateSystem]];
-dcoords=(\[DifferentialD]#)&/@OptionValue[CoordinateSystem];
+lgth=Length[OptionValue[Coordinates]];
+dcoords=(\[DifferentialD]#)&/@OptionValue[Coordinates];
 MetricM=Table[
 Which[
 	(* off diagonal terms *)
@@ -692,35 +1895,85 @@ Which[
 (* then feed matrix into the same code as above *)
 Tensor[
 TensorType->"Metric",
-CoordinateSystem->OptionValue[CoordinateSystem],
+Coordinates->OptionValue[Coordinates],
 TensorName->OptionValue[TensorName],
 StartIndex->OptionValue[StartIndex],
 ChristoffelOperator->OptionValue[ChristoffelOperator],
 RiemannOperator->OptionValue[RiemannOperator],
 RicciOperator->OptionValue[RicciOperator],
 RicciScalarOperator->OptionValue[RicciScalarOperator],
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->OptionValue[TooltipStyle],
 Indices->{\[Mu]T,\[Nu]T},
-TensorComponents->MetricM
+TensorComponents->(MetricM//OptionValue[MetricOperator]),
+FlatMetric->OptionValue[FlatMetric],
+OrthonormalFrameField->OptionValue[OrthonormalFrameField],
+InverseOrthonormalFrameField->OptionValue[InverseOrthonormalFrameField],
+OrthonormalFrameFieldOperator->OptionValue[OrthonormalFrameFieldOperator],
+OrthonormalFrameFieldIndices->OptionValue[OrthonormalFrameFieldIndices],
+TensorAssumption-> OptionValue[TensorAssumption],
+TensorOperator-> OptionValue[TensorOperator]
 ]
-]/;((Head[OptionValue[StartIndex]]===Integer)&&(OptionValue[StartIndex]>=0)&&CheckMetric[matrix,OptionValue[CoordinateSystem]]);
+]/;((Head[OptionValue[StartIndex]]===Integer)&&(OptionValue[StartIndex]>=0)&&
+TestQuadratic[matrix,OptionValue[Coordinates],-1]);
+
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),matrix_/;TestExpressionForm[matrix],opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]):=Module[
+{MetricM,\[Mu],\[Nu],pdcoords,lgth},
+(* convert the expression matrix to a dim. x dim. List matrix *)
+lgth=Length[OptionValue[Coordinates]];
+pdcoords=(\[Del]#)&/@OptionValue[Coordinates];
+MetricM=Table[
+Which[
+	(* off diagonal terms *)
+	\[Mu]=!=\[Nu],1/2 Coefficient[Expand[matrix],pdcoords[[\[Mu]]]pdcoords[[\[Nu]]]],
+	(* diagonal terms *)
+	\[Mu]===\[Nu],Coefficient[Expand[matrix],pdcoords[[\[Mu]]]pdcoords[[\[Nu]]]]
+],
+{\[Mu],1,lgth},{\[Nu],1,lgth}];
+(* then feed matrix into the same code as above *)
+Tensor[
+TensorType->"Metric",
+Coordinates->OptionValue[Coordinates],
+TensorName->OptionValue[TensorName],
+StartIndex->OptionValue[StartIndex],
+ChristoffelOperator->OptionValue[ChristoffelOperator],
+RiemannOperator->OptionValue[RiemannOperator],
+RicciOperator->OptionValue[RicciOperator],
+RicciScalarOperator->OptionValue[RicciScalarOperator],
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->OptionValue[TooltipStyle],
+Indices->{\[Mu]T,\[Nu]T},
+TensorComponents->(MetricM//OptionValue[MetricOperator]),
+FlatMetric->OptionValue[FlatMetric],
+OrthonormalFrameField->OptionValue[OrthonormalFrameField],
+InverseOrthonormalFrameField->OptionValue[InverseOrthonormalFrameField],
+OrthonormalFrameFieldOperator->OptionValue[OrthonormalFrameFieldOperator],
+OrthonormalFrameFieldIndices->OptionValue[OrthonormalFrameFieldIndices],
+TensorAssumption-> OptionValue[TensorAssumption],
+TensorOperator-> OptionValue[TensorOperator]
+]
+]/;((Head[OptionValue[StartIndex]]===Integer)&&(OptionValue[StartIndex]>=0)&&TestQuadratic[matrix,OptionValue[Coordinates],+1]);
 (* Metric also takes in a Tensor object of type Metric and spits out the components *)
 (* aka Raising and lowering of Metric indices *)
 (* one up and one down *)
-Metric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],m_Tensor]/;((MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SubMinus[_]}]||MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SuperMinus[_]}])&&(Cases[m,(TensorType->tt_)->tt]==={"Metric"})):=Module[{idx,cpts,row,col,l,ix,mx,id},
-l=Length[Cases[m,(CoordinateSystem->mmm_)->mmm][[1]]];
-ix=Cases[m,(Indices->idx_)->idx][[1]];
-mx=Cases[m,(TensorComponents->cpts_)->cpts][[1]];
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),m_Tensor,opts:OptionsPattern[]]/;((MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SubMinus[_]}]||MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SuperMinus[_]}])&&(TestMetricTensor[m])):=Module[{idx,cpts,row,col,l,ix,mx,id,output},
+l=Length[Coordinates[m]];
+ix=Indices[m];
+mx=TensorComponents[m];
 id=Table[KroneckerDelta[row,col],{row,1,l},{col,1,l}];
-m/.{
+output=m/.{
 (Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
 (TensorComponents->mx)->(TensorComponents->id)
-}
+};
+Which[(OptionValue[TooltipDisplay]=!=Null),output=output/.{(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])}];
+Which[(OptionValue[TooltipStyle]=!={}),output=output/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])];
+output
 ];
 (* both lower *)
-Metric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],m_Tensor]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]&&(Cases[m,(TensorType->tt_)->tt]==={"Metric"})):=Module[{ix,mx},
-ix=Cases[m,(Indices->idx_)->idx][[1]];
-mx=Cases[m,(TensorComponents->idx_)->idx][[1]];
-Which[
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),m_Tensor,opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SubMinus[_],SubMinus[_]}]&&(TestMetricTensor[m])):=Module[{ix,mx,output},
+ix=Indices[m];
+mx=TensorComponents[m];
+output=Which[
 (* both lower then just return the Tensor *)
 MatchQ[ix,{SubMinus[_],SubMinus[_]}],
 m/.(Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
@@ -728,14 +1981,18 @@ m/.(Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
 MatchQ[ix,{SuperMinus[_],SuperMinus[_]}],
 m/.{
 (Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
-(TensorComponents->mx):>(TensorComponents->FullSimplify[Inverse[mx]])}
-]
+(TensorComponents->mx):>(TensorComponents->(Inverse[mx]//OptionValue[MetricOperator]))}
+];
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,output=output/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])];
+Which[OptionValue[TooltipStyle]=!={},output=output/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])];
+output
 ];
 (* both upper *)
-Metric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],m_Tensor]/;(MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]&&(Cases[m,(TensorType->tt_)->tt]==={"Metric"})):=Module[{ix,mx},
-ix=Cases[m,(Indices->idx_)->idx][[1]];
-mx=Cases[m,(TensorComponents->idx_)->idx][[1]];
-Which[
+Metric[\[Mu]T_/;(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Nu]T_/;(TestIndices[\[Nu]T]&&!TestOverHatIndex[\[Nu]T]),m_Tensor,opts:OptionsPattern[]]/;(MatchQ[{\[Mu]T,\[Nu]T},{SuperMinus[_],SuperMinus[_]}]&&(TestMetricTensor[m])):=Module[{ix,mx,output},
+ix=Indices[m];
+mx=TensorComponents[m];
+output=Which[
 (* both upper then just return the Tensor *)
 MatchQ[ix,{SuperMinus[_],SuperMinus[_]}],
 m/.(Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
@@ -743,43 +2000,79 @@ m/.(Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
 MatchQ[ix,{SubMinus[_],SubMinus[_]}],
 m/.{
 (Indices->ix)->(Indices->{\[Mu]T,\[Nu]T}),
-(TensorComponents->mx):>(TensorComponents->FullSimplify[Inverse[mx]])}
-]
+(TensorComponents->mx):>(TensorComponents->(Inverse[mx]//OptionValue[MetricOperator]))}
+];
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,output=output/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])];
+Which[OptionValue[TooltipStyle]=!={},output=output/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])];
+output
 ];
 
 
 (* ::Input::Initialization:: *)
 (* Generates a Tensor with components stuff and indices \[Mu]T *)
-NonMetricTensor[\[Mu]T_List,stuff_List,CoordinateSystem->coords_List,opts:OptionsPattern[]]/;(Union[CheckIndex/@\[Mu]T]==={True})&&MatchQ[Dimensions[stuff],{nnn_Integer..}]:=Tensor[
-	Indices->\[Mu]T,
-	CoordinateSystem->coords,
-	TensorComponents->stuff,
-TensorName->OptionValue[TensorName],StartIndex->OptionValue[StartIndex],
-TooltipDisplay->OptionValue[TooltipDisplay],TensorType->OptionValue[TensorType]
+(* For non-scalar *)
+NonMetricTensor[\[Mu]T_List,(stuff_List|stuff_SparseArray|stuff_SymmetrizedArray),exp_,opts:OptionsPattern[]]/;(Union[TestIndices/@\[Mu]T]==={True})&&MatchQ[Dimensions[stuff],{nnn_Integer..}]:=Tensor[
+Indices->\[Mu]T,
+Coordinates->OptionValue[Coordinates],
+TensorComponents->stuff,
+TensorName->exp,
+StartIndex->OptionValue[StartIndex],
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->OptionValue[TooltipStyle],TensorType->OptionValue[TensorType],
+TensorAssumption-> OptionValue[TensorAssumption],
+TensorOperator-> OptionValue[TensorOperator]
 ];
+
+(* Generates a Tensor with components stuff and indices \[Mu]T *)
+(* For scalar *)
+NonMetricTensor[{},stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]==={})&&(Cases[{stuff},(\[Del]a_)-> a,Infinity]==={})),exp_,opts:OptionsPattern[]]:=Tensor[
+Indices->{},
+Coordinates->OptionValue[Coordinates],
+TensorComponents->stuff,
+TensorName->exp,
+StartIndex->OptionValue[StartIndex],
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->OptionValue[TooltipStyle],TensorType->OptionValue[TensorType],
+TensorAssumption-> OptionValue[TensorAssumption],
+TensorOperator-> OptionValue[TensorOperator]
+];
+
+(*NonMetricTensor for ExpressionForm (not scalar) with TensorProduct.*)
+NonMetricTensor[indices_/;(RankNumber[indices]=!=0),stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]==={})&&!TestSymmetricTensorExpressionForm[stuff]),exp_,opts:OptionsPattern[]]:=NonMetricTensor[indices,ToTensorComponents[stuff,Coordinates->OptionValue[Coordinates]],exp,Coordinates->OptionValue[Coordinates] ,opts];
+
+(*NonMetricTensor for ExpressionForm (not scalar) with TensorWedge.*)
+NonMetricTensor[indices_/;(RankNumber[indices]=!=0),stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]=!={})&&!TestSymmetricTensorExpressionForm[stuff]),exp_,opts:OptionsPattern[]]:=Module[{twteProduct,m},
+twteProduct=(stuff//TensorExpand)//WedgeExpand;
+m=ToTensorComponents[twteProduct,Coordinates->OptionValue[Coordinates]];
+NonMetricTensor[indices,m,exp,Coordinates->OptionValue[Coordinates],opts]
+];
+
+(*Symmetric NonMetricTensor for ExpressionForm (not scalar) with Times.*)
+NonMetricTensor[indices_/;(RankNumber[indices]=!=0),stuff_/;(TestExpressionForm[stuff]&&(Cases[{stuff},(\[DifferentialD]a_)-> a,Infinity]=!={}||(Cases[{stuff},(\[Del]a_)-> a,Infinity]=!={}))&&(Cases[{stuff},TensorWedge[__],Infinity]==={})&&TestSymmetricTensorExpressionForm[stuff]),exp_,opts:OptionsPattern[]]:=NonMetricTensor[indices,ToTensorComponents[stuff,Coordinates->OptionValue[Coordinates]],exp,Coordinates->OptionValue[Coordinates] ,opts];
 
 
 (* ::Input::Initialization:: *)
 (* either input the coordinates or their corresponding numbers *)
 (* Internally we build the Tensor with abstract indices before evaluating it with the specified ones *)
-Christoffel[\[Mu]I_/;CheckIndex[\[Mu]I],\[Alpha]I_/;CheckIndex[\[Alpha]I],\[Beta]I_/;CheckIndex[\[Beta]I],m_Tensor]/;((Cases[m,(TensorType->tt_)->tt]==={"Metric"})&&MatchQ[\[Mu]I,SuperMinus[_]]&&MatchQ[\[Alpha]I,SubMinus[_]]&&MatchQ[\[Beta]I,SubMinus[_]]):=Module[
+Christoffel[\[Mu]I_/;(TestIndices[\[Mu]I]&&!TestOverHatIndex[\[Mu]I]),\[Alpha]I_/;(TestIndices[\[Alpha]I]&&!TestOverHatIndex[\[Alpha]I]),\[Beta]I_/;(TestIndices[\[Beta]I]&&!TestOverHatIndex[\[Beta]I]),m_Tensor,opts:OptionsPattern[]]/;((TestMetricTensor[m])&&MatchQ[\[Mu]I,SuperMinus[_]]&&MatchQ[\[Alpha]I,SubMinus[_]]&&MatchQ[\[Beta]I,SubMinus[_]]):=Module[
 {\[Mu],\[Alpha],\[Beta],cooo,st,d,mm,Chris,cc,disp},
-cooo=Flatten[Cases[m,(CoordinateSystem->cc_)->cc,Infinity]];
+cooo=Coordinates[m];
 d=Length[cooo];
-st=Flatten[Cases[m,(StartIndex->cc_)->cc,Infinity]][[1]];
-Chris=Flatten[Cases[m,(ChristoffelComponents->cc_)->cc,Infinity]];
+st=StartIndex[m];
+Chris=Flatten[Cases[m,(ChristoffelComponents->cc_)->cc,1]];
 mm=Table[(ChristoffelComponents[SuperMinus[\[Mu]],SubMinus[\[Alpha]],SubMinus[\[Beta]]]/.Chris),{\[Mu],st,st+d-1},{\[Alpha],st,st+d-1},{\[Beta],st,st+d-1}];
-(* display only non-zero components *)
-disp=Select[Chris,(Flatten[Cases[{#},(ChristoffelComponents[__]->cc_)->cc]][[1]]=!=0)&];
-disp=(disp/.{ChristoffelComponents[SuperMinus[\[Mu]s_],SubMinus[\[Alpha]s_],SubMinus[\[Beta]s_]]:>Row[{"\[CapitalGamma]",Column[{cooo[[\[Mu]s-st+1]],Null}],Column[{Null,cooo[[\[Alpha]s-st+1]]}],Column[{Null,cooo[[\[Beta]s-st+1]]}]}]});
 Tensor[
 TensorType->"ChristoffelSymbols",
 TensorName->"\[CapitalGamma]",
-CoordinateSystem->cooo,
+Coordinates->cooo,
 TensorComponents->mm,
 StartIndex->st,
 Indices->{\[Mu]I,\[Alpha]I,\[Beta]I},
-TooltipDisplay->disp
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->Which[(OptionValue[TooltipStyle]=!={}),OptionValue[TooltipStyle],True, TooltipStyle[m]],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
 ]
 ];
 
@@ -787,12 +2080,12 @@ TooltipDisplay->disp
 (* ::Input::Initialization:: *)
 (* either input the coordinates or their corresponding numbers *)
 (* Internally we build the Tensor with abstract indices before evaluating it with the specified ones *)
-Riemann[\[Mu]I_/;CheckIndex[\[Mu]I],\[Nu]I_/;CheckIndex[\[Nu]I],\[Alpha]I_/;CheckIndex[\[Alpha]I],\[Beta]I_/;CheckIndex[\[Beta]I],m_Tensor]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=Module[
+Riemann[\[Mu]I_/;(TestIndices[\[Mu]I]&&!TestOverHatIndex[\[Mu]I]),\[Nu]I_/;(TestIndices[\[Nu]I]&&!TestOverHatIndex[\[Nu]I]),\[Alpha]I_/;(TestIndices[\[Alpha]I]&&!TestOverHatIndex[\[Alpha]I]),\[Beta]I_/;(TestIndices[\[Beta]I]&&!TestOverHatIndex[\[Beta]I]),m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m]):=Module[
 {mm,\[Mu],\[Nu],\[Alpha],\[Beta],\[Mu]1,\[Nu]1,\[Alpha]1,\[Beta]1,rl,si,cooo,disp,d,cc,Rie,lhs,rhs,RL1,RL2,RL3,RL4,RiemannTemp,\[Tau]},
-cooo=Flatten[Cases[m,(CoordinateSystem->cc_)->cc]];
+cooo=Coordinates[m];
 d=Length[cooo];
-si=Cases[m,(StartIndex->cc_)->cc][[1]];
-Rie=Flatten[Cases[m,(RiemannComponents->cc_)->cc,Infinity]];
+si=StartIndex[m];
+Rie=Flatten[Cases[m,(RiemannComponents->cc_)->cc,1]];
 Do[RL1[\[Mu],\[Mu]1]=RaiseLower[ReplaceIndex[\[Mu],\[Mu]I],SuperMinus[\[Mu]1],m],{\[Mu],si,si+d-1},{\[Mu]1,si,si+d-1}];
 Do[RL2[\[Nu],\[Nu]1]=RaiseLower[ReplaceIndex[\[Nu],\[Nu]I],SubMinus[\[Nu]1],m],{\[Nu],si,si+d-1},{\[Nu]1,si,si+d-1}];
 Do[RL3[\[Alpha],\[Alpha]1]=RaiseLower[ReplaceIndex[\[Alpha],\[Alpha]I],SubMinus[\[Alpha]1],m],{\[Alpha],si,si+d-1},{\[Alpha]1,si,si+d-1}];
@@ -805,32 +2098,29 @@ mm=Table[Sum[RL1[\[Mu],\[Mu]1]RL2[\[Nu],\[Nu]1]RL3[\[Alpha],\[Alpha]1]RL4[\[Beta
 (* Originally we wanted to display Riemann components *)
 (* But there are so many components and it slows the whole process down too much *)
 (* So we are going to skip this for now *)
-(*
-disp=Flatten[Table[{Row[{"R",UpOrDown[ReplaceIndex[cooo\[LeftDoubleBracket]\[Mu]\[RightDoubleBracket],\[Mu]I]],UpOrDown[ReplaceIndex[cooo\[LeftDoubleBracket]\[Nu]\[RightDoubleBracket],\[Nu]I]],UpOrDown[ReplaceIndex[cooo\[LeftDoubleBracket]\[Alpha]\[RightDoubleBracket],\[Alpha]I]],UpOrDown[ReplaceIndex[cooo\[LeftDoubleBracket]\[Beta]\[RightDoubleBracket],\[Beta]I]]}]\[Rule]mm\[LeftDoubleBracket]\[Mu],\[Nu],\[Alpha],\[Beta]\[RightDoubleBracket]},
-{\[Mu],1,d},{\[Nu],1,d},{\[Alpha],1,d},{\[Beta],1,d}]];
-disp=Select[disp,(Flatten[Cases[{#},(Row[{__}]\[Rule]cc_)\[Rule]cc]]\[LeftDoubleBracket]1\[RightDoubleBracket]=!=0)&];
-*)
 Tensor[
-TensorType->"RiemannCurvatureTensor",
 TensorName->"\!\(\*
 StyleBox[\"R\",\nFontSlant->\"Italic\"]\)",
-CoordinateSystem->Flatten[Cases[m,(CoordinateSystem->cc_)->cc]],
+Coordinates->Coordinates[m],
 TensorComponents->mm,
 StartIndex->si,
-Indices->{\[Mu]I,\[Nu]I,\[Alpha]I,\[Beta]I}(*,
-TooltipDisplay\[Rule]"Tidal forces encoded here. \[HappySmiley]"*)
+Indices->{\[Mu]I,\[Nu]I,\[Alpha]I,\[Beta]I},
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->Which[(OptionValue[TooltipStyle]=!={}),OptionValue[TooltipStyle],True, TooltipStyle[m]],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
 ]
 ];
 
 
 (* ::Input::Initialization:: *)
 (* either input the coordinates or their corresponding numbers *)
-Ricci[\[Nu]I_/;CheckIndex[\[Nu]I],\[Beta]I_/;CheckIndex[\[Beta]I],m_Tensor]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=Module[
+Ricci[\[Nu]I_/;(TestIndices[\[Nu]I]&&!TestOverHatIndex[\[Nu]I]),\[Beta]I_/;(TestIndices[\[Beta]I]&&!TestOverHatIndex[\[Beta]I]),m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m]):=Module[
 {mm,\[Mu],\[Nu],\[Alpha],\[Beta],\[Mu]1,\[Nu]1,\[Alpha]1,\[Beta]1,rl,si,cooo,disp,d,cc,Ric,RL1,RL2,RicciTemp},
-cooo=Flatten[Cases[m,(CoordinateSystem->cc_)->cc]];
+cooo=Coordinates[m];
 d=Length[cooo];
-si=Cases[m,(StartIndex->cc_)->cc][[1]];
-Ric=Flatten[Cases[m,(RicciComponents->cc_)->cc,Infinity]];
+si=StartIndex[m];
+Ric=Flatten[Cases[m,(RicciComponents->cc_)->cc,1]];
 Do[RL1[\[Nu],\[Nu]1]=RaiseLower[ReplaceIndex[\[Nu],\[Nu]I],SubMinus[\[Nu]1],m],{\[Nu],si,si+d-1},{\[Nu]1,si,si+d-1}];
 Do[RL2[\[Beta],\[Beta]1]=RaiseLower[ReplaceIndex[\[Beta],\[Beta]I],SubMinus[\[Beta]1],m],{\[Beta],si,si+d-1},{\[Beta]1,si,si+d-1}];
 Do[RicciTemp[\[Nu]1,\[Beta]1]=(RicciComponents[SubMinus[\[Nu]1],SubMinus[\[Beta]1]]/.Ric),
@@ -838,34 +2128,37 @@ Do[RicciTemp[\[Nu]1,\[Beta]1]=(RicciComponents[SubMinus[\[Nu]1],SubMinus[\[Beta]
 mm=Table[
 Sum[RL1[\[Nu],\[Nu]1]RL2[\[Beta],\[Beta]1]RicciTemp[\[Nu]1,\[Beta]1],{\[Nu]1,si,si+d-1},{\[Beta]1,si,si+d-1}],
 {\[Nu],si,si+d-1},{\[Beta],si,si+d-1}];
-disp={Row[{"\!\(\*
-StyleBox[\"R\",\nFontSlant->\"Italic\"]\)",UpOrDown[\[Nu]I],UpOrDown[\[Beta]I]}]->mm,"Coordinates"->cooo};
-Tensor[
-TensorType->"RicciCurvatureTensor",
-TensorName->"\!\(\*
+Tensor[TensorName->"\!\(\*
 StyleBox[\"R\",\nFontSlant->\"Italic\"]\)",
-CoordinateSystem->Flatten[Cases[m,(CoordinateSystem->cc_)->cc]],
+Coordinates->Coordinates[m],
 TensorComponents->mm,
 StartIndex->si,
 Indices->{\[Nu]I,\[Beta]I},
-TooltipDisplay->disp
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->Which[(OptionValue[TooltipStyle]=!={}),OptionValue[TooltipStyle],True, TooltipStyle[m]],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
 ]
 ];
 
 
 (* ::Input::Initialization:: *)
-RicciScalar[m_Tensor]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=(RicciScalar/.Flatten[Cases[m,(RicciScalarInvariant->cc_)->cc]]);
+RicciScalar[m_Tensor]/;(TestMetricTensor[m]):=(RicciScalar/.Flatten[Cases[m,(RicciScalarInvariant->cc_)->cc,1]]);
+
+RicciScalar[m_Tensor,Tensor]/;(TestMetricTensor[m]):=
+NonMetricTensor[{},RicciScalar[m],"R",Coordinates->Coordinates[m],StartIndex->StartIndex[m],TooltipDisplay-> Null,TooltipStyle-> TooltipStyle[m],TensorAssumption-> TensorAssumption[m],TensorOperator-> TensorOperator[m]]
 
 
 (* ::Input::Initialization:: *)
 (* either input the coordinates or their corresponding numbers *)
 (* Internally we build the Tensor with abstract indices before evaluating it with the specified ones *)
-Weyl[\[Alpha]I_/;CheckIndex[\[Alpha]I],\[Beta]I_/;CheckIndex[\[Beta]I],\[Mu]I_/;CheckIndex[\[Mu]I],\[Nu]I_/;CheckIndex[\[Nu]I],m_Tensor,opts:OptionsPattern[]]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=Module[
+(* d>3 *)
+Weyl[\[Alpha]I_/;(TestIndices[\[Alpha]I]&&!TestOverHatIndex[\[Alpha]I]),\[Beta]I_/;(TestIndices[\[Beta]I]&&!TestOverHatIndex[\[Beta]I]),\[Mu]I_/;(TestIndices[\[Mu]I]&&!TestOverHatIndex[\[Mu]I]),\[Nu]I_/;(TestIndices[\[Nu]I]&&!TestOverHatIndex[\[Nu]I]),m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m])&&((* check d>3 *)Union[Dimensions[m]][[1]]>3):=Module[
 {mm,W,W0,\[Mu],\[Nu],\[Alpha],\[Beta],si,cooo,d,op},
 op=OptionValue[WeylOperator];
-cooo=Flatten[Cases[m,(CoordinateSystem->cc_)->cc]];
+cooo=Coordinates[m];
 d=Length[cooo];
-si=Cases[m,(StartIndex->cc_)->cc][[1]];
+si=StartIndex[m];
 W[\[Alpha]_,\[Beta]_,\[Mu]_,\[Nu]_,mm_Tensor]:=Riemann[\[Alpha],\[Beta],\[Mu],\[Nu],mm]-1/(d-2) ((Ricci[\[Alpha],\[Mu],mm]Metric[\[Nu],\[Beta],mm]-Ricci[\[Alpha],\[Nu],mm]Metric[\[Mu],\[Beta],mm])-(Ricci[\[Beta],\[Mu],mm]Metric[\[Nu],\[Alpha],mm]-Ricci[\[Beta],\[Nu],mm]Metric[\[Mu],\[Alpha],mm]))+RicciScalar[mm]/((d-1)(d-2)) (Metric[\[Alpha],\[Mu],mm]Metric[\[Nu],\[Beta],mm]-Metric[\[Alpha],\[Nu],mm]Metric[\[Mu],\[Beta],mm]);
 W0=W[ReplaceIndex[\[Alpha],\[Alpha]I],ReplaceIndex[\[Beta],\[Beta]I],ReplaceIndex[\[Mu],\[Mu]I],ReplaceIndex[\[Nu],\[Nu]I],m];
 W0=Table[op[W0],{\[Alpha],si,si+d-1},{\[Beta],si,si+d-1},{\[Mu],si,si+d-1},{\[Nu],si,si+d-1}];
@@ -873,11 +2166,39 @@ Tensor[
 TensorType->"WeylCurvatureTensor",
 TensorName->"\!\(\*
 StyleBox[\"C\",\nFontSlant->\"Italic\"]\)",
-CoordinateSystem->cooo,
+Coordinates->cooo,
 TensorComponents->W0,
 StartIndex->si,
 Indices->{\[Alpha]I,\[Beta]I,\[Mu]I,\[Nu]I},
-TooltipDisplay->"Weyl is the traceless part of the Riemann tensor."
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->Which[(OptionValue[TooltipStyle]=!={}),OptionValue[TooltipStyle],True, TooltipStyle[m]],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
+]
+];
+
+
+(* ::Input::Initialization:: *)
+(* d<=3 *)
+(* Weyl, defined to be the traceless part of Riemann is zero if d =2 or d = 3. *)
+(* For 3D we have done a brute force calculation to prove it. *)
+(* For 2D the usual formula for Weyl breaks down; Use fact that einstein tensor is zero and 2D metrics are conformally flat to prove *)
+(* Riemann has only 1 independent component in 2D so heuristically that means subtracting its trace should yield zero *)
+Weyl[\[Alpha]I_/;TestIndices[\[Alpha]I],\[Beta]I_/;TestIndices[\[Beta]I],\[Mu]I_/;TestIndices[\[Mu]I],\[Nu]I_/;TestIndices[\[Nu]I],m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m])&&((* check d<=3 *)Union[Dimensions[m]][[1]]<=3):=Module[
+{mm,W,W0,\[Mu],\[Nu],\[Alpha],\[Beta],si,cooo,d,op},
+cooo=Coordinates[m];
+d=Length[cooo];
+si=StartIndex[m];
+(* generate an array of zeroes *)
+W0=ConstantArray[0,{d,d,d,d}];
+Tensor[
+TensorType->"WeylCurvatureTensor",
+TensorName->"C",
+Coordinates->cooo,
+TensorComponents->W0,
+StartIndex->si,
+Indices->{\[Alpha]I,\[Beta]I,\[Mu]I,\[Nu]I},
+TooltipDisplay->"Weyl, being the traceless part of the Riemann tensor, is zero in 2D and 3D."
 ]
 ];
 
@@ -885,7 +2206,7 @@ TooltipDisplay->"Weyl is the traceless part of the Riemann tensor."
 (* ::Input::Initialization:: *)
 (* Einstein Tensor *)
 (* either input the coordinates or their corresponding numbers *)
-Einstein[\[Nu]I_/;CheckIndex[\[Nu]I],\[Beta]I_/;CheckIndex[\[Beta]I],m_Tensor,opts:OptionsPattern[]]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=Module[
+Einstein[\[Nu]I_/;(TestIndices[\[Nu]I]&&!TestOverHatIndex[\[Nu]I]),\[Beta]I_/;(TestIndices[\[Beta]I]&&!TestOverHatIndex[\[Beta]I]),m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m]):=Module[
 {mm,cooo,si,disp,RicciScalarT,RicciTensorT,MetricT,op,\[Nu]T,\[Beta]T},
 op=OptionValue[EinsteinOperator];
 RicciScalarT=RicciScalar[m];
@@ -893,120 +2214,161 @@ RicciScalarT=RicciScalar[m];
 RicciTensorT=TensorComponents[Ricci[ReplaceIndex[\[Nu]T,\[Nu]I],ReplaceIndex[\[Beta]T,\[Beta]I],m]];
 MetricT=TensorComponents[Metric[ReplaceIndex[\[Nu]T,\[Nu]I],ReplaceIndex[\[Beta]T,\[Beta]I],m]];
 mm=RicciTensorT-(MetricT/2)RicciScalarT;mm=op[mm];
-si=Cases[m,(StartIndex->cc_)->cc][[1]];
+si=StartIndex[m];
 cooo=Coordinates[m];
-disp={Row[{"\!\(\*
-StyleBox[\"G\",\nFontSlant->\"Italic\"]\)",UpOrDown[\[Nu]I],UpOrDown[\[Beta]I]}]->mm,"Coordinates"->cooo};
 (* ...then we will evaluate it with specified indices which may be non-abstract *)
 Tensor[
 TensorType->"EinsteinTensor",
 TensorName->"\!\(\*
 StyleBox[\"G\",\nFontSlant->\"Italic\"]\)",
-CoordinateSystem->cooo,
+Coordinates->cooo,
 TensorComponents->mm,
 StartIndex->si,
 Indices->{\[Nu]I,\[Beta]I},
-TooltipDisplay->disp
+TooltipDisplay->OptionValue[TooltipDisplay],
+TooltipStyle->Which[(OptionValue[TooltipStyle]=!={}),OptionValue[TooltipStyle],True, TooltipStyle[m]],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
 ]
 ];
 
 
 (* ::Input::Initialization:: *)
-Determinant[m_Tensor]/;(Cases[m,(TensorType->tt_)->tt]==={"Metric"}):=Cases[m,(MetricDeterminant->mmm_)->mmm][[1]]
+Determinant[m_Tensor]/;(TestMetricTensor[m]):=Cases[m,(MetricDeterminant->mmm_)->mmm,1][[1]]
+
+Determinant[m_Tensor,Tensor]/;(TestMetricTensor[m]):=
+NonMetricTensor[{},Determinant[m],Row[{"|",TensorName[m],"|"}],Coordinates->Coordinates[m],StartIndex->StartIndex[m],TooltipDisplay-> Null,TooltipStyle-> TooltipStyle[m],TensorAssumption-> TensorAssumption[m],TensorOperator-> TensorOperator[m]]
 
 
 (* ::Input::Initialization:: *)
-Coordinates[m_Tensor]:=Module[{mmm},Cases[m,(CoordinateSystem->mmm_)->mmm,\[Infinity]][[1]]]
+(*Extract from a metric*)
+OrthonormalFrameField[m_Tensor]/;(TestMetricTensor[m]):=
+(*Extract both OrthonormalFrameField and InverseOrthonormalFrameField as a list output.*)
+{Cases[m,(OrthonormalFrameField->mmm_)->mmm,1][[1]],Cases[m,(InverseOrthonormalFrameField->mmm_)->mmm,1][[1]]}
 
 
 (* ::Input::Initialization:: *)
-(* The main function for ContractTensors to act as a TensorProduct of sorts for Tensor objects *)
-(* Note: Assigning upvalues for Tensor involving TensorProduct yields levels too deep for MMA to handle;
-that's why we need ContractTensors *)
-(* one Tensor *)
-ContractTensors/:ContractTensors[tt_Tensor]:=tt;
-(* Thread over Plus automatically *)
-ContractTensors/:ContractTensors[mm_]:=(ContractTensors/@mm)/;(Head[mm]===Plus); 
-(* Pull out non-Tensor objects *)
-ContractTensors/:ContractTensors[mm_]:=Module[{allTensors,therest},
-allTensors=Times@@Cases[(List@@mm),_Tensor];
-therest=Times@@DeleteCases[(List@@mm),_Tensor];
-therest ContractTensors[allTensors]]/;(Head[mm]===Times)&&(Union[(Head/@(List@@mm))]=!={Tensor});
-ContractTensors/:ContractTensors[1]:=1;
-(* Tensor product of more than one Tensors with same CoordinateSystem *)
-ContractTensors/:ContractTensors[tt_]:=Block[
-{tensorproduct,allindices,tensornames},
-(* perform a tensor product *)
-tensorproduct=TensorProduct[Sequence@@(TensorComponents/@(List@@tt))];
-(* Join all indices to form index structure of Tensor Product *)
-allindices=Join[Sequence@@(Indices/@(List@@tt))];
-(* Tensor all the names *)
-tensornames=TensorProduct[Sequence@@(Cases[#,(TensorName->name_):>name,\[Infinity]][[1]]&/@(List@@tt))];
-(* output Tensor will inherit properties of the first Tensor *)
-(List@@tt)[[1]]/.{
-(TensorName->xxx_)->(TensorName->tensornames),
-(Indices->xxx_)->(Indices->allindices),
-(TensorComponents->xxxxx_)->(TensorComponents->tensorproduct)}
-]/;((* check tensor product *)(Head[tt]===Times)&&(Length[tt]>1)&&(Union[Head/@(List@@tt)]==={Tensor})&&(Length[Union[Coordinates/@(List@@tt)]]===1)(*&&((* no Metrics *)Intersection[Union[Cases[{tt},(TensorType\[Rule]xx_)\[Rule]xx,\[Infinity]]],{"Metric"}]==={})*));
+(*Declare OrthonormalFrameField as a Tensor object. Input a metric w/ OrthonormalFrameField*)OrthonormalFrameField[\[Mu]1_/;(TestIndices[\[Mu]1]&&TestOverHatIndex[\[Mu]1]),\[Mu]2_/;(TestIndices[\[Mu]2]&&!TestOverHatIndex[\[Mu]2]),m_Tensor/;(TestMetricTensor[m])]:=Module[{Flatmetric,invonfft,onfft,invonffm,onffm},
+(*Extract Flatmetric*)
+Flatmetric=Cases[m,(FlatMetric->fm_)->fm][[1]];
+onfft=Cases[m,(OrthonormalFrameField->onf_)->onf,1][[1]];
+invonfft=Cases[m,(InverseOrthonormalFrameField->ionf_)->ionf,1][[1]];
+onffm=TensorComponents[onfft];
+invonffm=TensorComponents[invonfft];
+Indices[(onfft/.(TensorComponents->mx_)->(TensorComponents->Which[(Sgn[\[Mu]1]===1&&Sgn[\[Mu]2]===-1),(*Subscript[\[CurlyEpsilon]^Overscript[a, ^], b]*)onffm,(Sgn[\[Mu]1]===-1&&Sgn[\[Mu]2]===-1),(*Subscript[Subscript[\[CurlyEpsilon], Overscript[a, ^]], b]=Subscript[\[Eta], ac]Subscript[\[CurlyEpsilon]^Overscript[c, ^], b]*)Flatmetric.onffm,(Sgn[\[Mu]1]===-1&&Sgn[\[Mu]2]===1),(*Subscript[\[CurlyEpsilon], Overscript[a, ^]]^b*)invonffm,(Sgn[\[Mu]1]===1&&Sgn[\[Mu]2]===1),(*\[CurlyEpsilon]^(Overscript[a, ^]b)=\[Eta]^acSubscript[\[CurlyEpsilon], Overscript[c, ^]]^b*)Flatmetric.invonffm])),{\[Mu]1,\[Mu]2}]];
 
 
 (* ::Input::Initialization:: *)
-(* Take the product of two or more tensors and sum over repeated indices *)
-(* contraction between 2g's, g non-g, or both non-g's *)
-(* (I) contract of 2 g's *)
-(* ContractTensors[Times[t1___,m1_,t2___,m2_,t3___]]:=; *)
-(* Right now we do not check Dimensions are the same before we do ContractTensors *)
-(* old code
-ContractTensors[Times[tt__]]/;Union[Head/@(List@@Times[tt])]==={Tensor}:=Block[
-{tensorproduct,allindices,repeatedindices,ix},
-(* first perform a tensor product *)
-tensorproduct=TensorProduct[Sequence@@(TensorComponents/@(List@@Times[tt]))];
-(* extract repeated indices *)
-ix=Indices/@(List@@Times[tt]);
-repeatedindices=CollectRepeatedIndices[Sequence@@ix];
-(* sum over repeated indices using TensorContract *)
-(* list of all indices w/ Sub/SuperMinus removed from repeated ones *)
-allindices=(Join[Sequence@@ix]/.Flatten[{(SuperMinus[#]\[Rule]#),(SubMinus[#]\[Rule]#)}&/@repeatedindices]);
-tensorproduct=TensorContract[
-tensorproduct,
-(* {{pair 1},{pair 2},...} *)
-Flatten[Position[allindices,#]]&/@repeatedindices
+(*Input a metric and FlatMetric*)
+OrthonormalFrameField[m_Tensor,opts:OptionsPattern[]]/;(TestMetricTensor[m]):=Module[{onffoutput,tempm,onffidx},
+onffoutput=OptionValue[OutputForm];
+(*Trigger Tensor code. See: OrthonormalFrameField Tensor part*)
+onffidx=OptionValue[OrthonormalFrameFieldIndices];
+tempm=m/.{(FlatMetric->fmm_)->(FlatMetric->OptionValue[FlatMetric]),(OrthonormalFrameField->fmm_)->(OrthonormalFrameField->OptionValue[OrthonormalFrameField]),
+(InverseOrthonormalFrameField->fmm_)->(InverseOrthonormalFrameField->OptionValue[InverseOrthonormalFrameField]),((OrthonormalFrameFieldOperator->onffop_)->(OrthonormalFrameFieldOperator->OptionValue[OrthonormalFrameFieldOperator])),
+((OrthonormalFrameFieldIndices->onffidxx_)->(OrthonormalFrameFieldIndices->onffidx))};
+Which[(onffoutput===Metric),tempm,(onffoutput===All),{Sequence@@OrthonormalFrameField[tempm],tempm},True,tempm]];
+
+(*Second strategy of ONFF*)
+OrthonormalFrameField[m_Tensor/;TestMetricTensor[m],eigens_List,order_List,opts:OptionsPattern[]]:=Module[{fm,Flatmetric,g,ginv,d,rotm,valuesqrt,ONFFm,ONFFinvm,output,onff,invonff,idx,matrix,onffop,cc,checkonff,tempm,ONFFt,ONFFinvt,\[Alpha],\[Mu],coord,onffidx,ONFFtidx,ONFFinvtidx,eigenvalue,eigenvector,i,Listt,onffoutput},fm=OptionValue[FlatMetric];
+onffop=OptionValue[OrthonormalFrameFieldOperator];
+onffidx=OptionValue[OrthonormalFrameFieldIndices];
+onffoutput=OptionValue[OutputForm];
+idx=Indices[m];
+matrix=TensorComponents[m];
+coord=Coordinates[m];
+Which[MatchQ[idx,{SubMinus[_],SubMinus[_]}],g=matrix;ginv=(Inverse[matrix]//onffop),MatchQ[idx,{SuperMinus[_],SuperMinus[_]}],ginv=matrix;g=(Inverse[matrix]//onffop)];
+d=Length[fm];
+eigenvalue=Table[eigens[[1,order[[i]]]],{i,1,d}];
+eigenvector=Table[eigens[[2,order[[i]]]],{i,1,d}];
+Flatmetric=DiagonalMatrix[fm];
+rotm=Table[(Normalize[eigenvector[[i]]]//onffop),{i,1,d}];
+valuesqrt=(Sqrt[#]&/@(Flatmetric.eigenvalue))//onffop;
+ONFFm=(Table[valuesqrt[[i]] rotm[[i]],{i,1,d}])//onffop;
+ONFFinvm=(Flatmetric.ONFFm.ginv)//onffop;
+Listt=Apply[List,m];
+(*The first index should have OverHat*)
+ONFFtidx=Which[((onffidx=!=Null)&&((Head[#]&/@onffidx)==={OverHat,Symbol})&&(Head[onffidx[[1,1]]]===Symbol)),{SuperMinus[onffidx[[1]]],SubMinus[onffidx[[2]]]},True,{SuperMinus[\!\(\*OverscriptBox[\(\[Alpha]\), \(^\)]\)],SubMinus[\[Mu]]}];
+ONFFinvtidx=Which[((onffidx=!=Null)&&((Head[#]&/@onffidx)==={OverHat,Symbol})&&(Head[onffidx[[1,1]]]===Symbol)),{SubMinus[(onffidx[[1]])],SuperMinus[onffidx[[2]]]},True,{SubMinus[\!\(\*OverscriptBox[\(\[Alpha]\), \(^\)]\)],SuperMinus[\[Mu]]}];
+ONFFt=Listt/.{(FlatMetric->fmmmm_)->(FlatMetric->Flatmetric),(TensorType->tt_)-> Nothing,
+(TensorName->tn_)->(TensorName->"\[CurlyEpsilon]") ,
+(Indices->idxx_)-> (Indices->ONFFtidx),
+(TensorComponents->tc_)-> (TensorComponents->ONFFm)};
+ONFFinvt=ONFFt/.{(Indices->idxx_)-> (Indices->ONFFinvtidx),
+(TensorComponents->tc_)-> (TensorComponents->ONFFinvm)
+};
+ONFFt=Apply[Tensor,ONFFt];
+ONFFinvt=Apply[Tensor,ONFFinvt];
+(*Replace w/ calculation result.*)
+tempm=Listt/.{(FlatMetric->fmmmm_)->(FlatMetric->Flatmetric),(OrthonormalFrameField->onf_)->(OrthonormalFrameField->ONFFt),(InverseOrthonormalFrameField->ionf_)->(InverseOrthonormalFrameField->ONFFinvt),(OrthonormalFrameFieldOperator->oop_)->(OrthonormalFrameFieldOperator->Null)};
+tempm=Apply[Tensor,tempm];
+Which[(onffoutput===Metric),tempm,(onffoutput===All),{Sequence@@OrthonormalFrameField[tempm],tempm},True,tempm]
+]/;((Dimensions[eigens]==={2,CoordinatesDimension[m]})&&(Length[order]===CoordinatesDimension[m])&&(Length[OptionValue[FlatMetric]]===CoordinatesDimension[m]));
+
+
+(* ::Input::Initialization:: *)
+(*OrthonormalFrameFieldQ becomes a standalone Function.*)
+OrthonormalFrameFieldQ[m_Tensor/;(TestMetricTensor[m]&&(Cases[m,(OrthonormalFrameField->onf_)->onf,1]=!={})&&
+(Cases[m,(InverseOrthonormalFrameField->ionf_)->ionf,1]=!={})),opts:OptionsPattern[]]:=Module[{result1,result2,Flatmetric,invonfft,onfft,invonffm,onffm,onffop,g},
+Flatmetric=Cases[m,(FlatMetric->fm_)->fm][[1]];
+onfft=Cases[m,(OrthonormalFrameField->onf_)->onf,1][[1]];
+invonfft=Cases[m,(InverseOrthonormalFrameField->ionf_)->ionf,1][[1]];
+onffm=TensorComponents[onfft];
+invonffm=TensorComponents[invonfft];
+onffop=Cases[m,(OrthonormalFrameFieldOperator->onfop_)->onfop,1][[1]];
+g=TensorComponents[m];
+(*Subscript[g, cd]=Subscript[\[CurlyEpsilon]^Overscript[a, ^], c]Subscript[\[Eta], ab]Subscript[\[CurlyEpsilon]^Overscript[b, ^], d]*)
+result1=(Transpose[onffm].Flatmetric.onffm==g)//onffop;
+(*Subscript[\[Eta], cd]=Subscript[\[CurlyEpsilon], Overscript[c, ^]]^aSubscript[g, ab]Subscript[\[CurlyEpsilon], Overscript[d, ^]]^b*)
+result2=((invonffm.g.Transpose[invonffm]==Flatmetric)//onffop);
+If[(OptionValue[OutputForm]===BooleanQ),(result1===True)&&(result2===True),{result1,result2}]
 ];
-(* remove repeated indices *)
-allindices=DeleteCases[allindices,Alternatives@@repeatedindices];
-(* return Tensor *)
-(* output Tensor will inherit properties of the first Tensor *)
-(* output Tensor indices are inherited from tt, from left to right, with repeated indices discarded *)
-(List@@Times[tt])\[LeftDoubleBracket]1\[RightDoubleBracket]/.{
-(Indices\[Rule]xxx_)\[Rule](Indices\[Rule]allindices),
-(TensorComponents\[Rule]xxxxx_)\[Rule](TensorComponents\[Rule]tensorproduct)
-}
-]; *)
 
 
 (* ::Input::Initialization:: *)
-(* One Tensor *)
-TensorComponents[m_Tensor]:=Cases[m,(TensorComponents->mmm_):>mmm,\[Infinity]][[1]];
-(* If there are no Tensor's then just return the same object *)
-TensorComponents[m_]:=m/;(Union[Cases[{m},Tensor[stuff___],\[Infinity]]]==={});
-(* Thread over Plus automatically *)
-TensorComponents/:TensorComponents[mm_]:=(TensorComponents/@mm)/;(Head[mm]===Plus);
-(* Use ContractTensors to take care of TensorProduct's *)
-TensorComponents/:TensorComponents[mm_]:=Module[{allTensors,therest},
-allTensors=Times@@Cases[(List@@mm),_Tensor];
-therest=Times@@DeleteCases[(List@@mm),_Tensor];
-therest TensorComponents[ContractTensors[allTensors]]
-]/;(Head[mm]===Times);
+(*\[TensorProduct]: esc+ t+*+esc shortcut for TensorsProduct.*)
+Unprotect[TensorProduct];
+TensorProduct[ttt__/;(Union[Cases[{ttt},Tensor[xx___],\[Infinity]]]=!={})]:=TensorsProduct[{ttt}]
+Protect[TensorProduct];
 
 
 (* ::Input::Initialization:: *)
-Indices[m_Tensor]:=Cases[m,(Indices->mmm_)->mmm,\[Infinity]][[1]]
+ContractTensors[(t_Times|t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})))]/;(TestTensorsProduct[t]&&((Union[IsThereInertTensor[t]])=!={False})):=Module[
+{WhichTensorsAreInert=IsThereInertTensor[t],tList=Apply[List,t],InertTensorR={},ActiveTensor=tList,InertTensor=1,tl},
+tl=Length[WhichTensorsAreInert];
+Do[Which[(WhichTensorsAreInert[[ii]]),AppendTo[InertTensorR,(tList[[ii]]->Nothing)];InertTensor=InertTensor tList[[ii]];],{ii,1,tl}];
+InertTensor
+ContractTensors[tList/.InertTensorR]
+];
+
+ContractTensors[(t_Times|t_List/;((t=!={})&&(Cases[t,_Tensor,Infinity]=!={})))]/;(TestTensorsProduct[t]&&((Union[IsThereInertTensor[t]])==={False})):=Module[
+{tList=Apply[List,t],tl,allInidces,allInidcesRemovePosition,FlattenAllInidces,idxl,IndicesFirst,RepeatedPlus,FirstTensor,d,ContractIndices,DeleteContractIndicesR,InertIndices,ContractIndicesRange,InertIndicesRange,tcList,mtx,GatherFlattenAllIndices,RepeatedPairs},
+allInidces=RemoveUnderBarredIndices[#]&/@(Indices[#]&/@tList);
+allInidcesRemovePosition=allInidces/.{SubMinus[a_]:>a,SuperMinus[b_]:>b};
+FlattenAllInidces=Flatten[allInidces];
+tl=Length[allInidces];
+idxl=Length[FlattenAllInidces];
+IndicesFirst=First[#]&/@FlattenAllInidces;
+(*RepeatedIndices*)
+ContractIndices=RepeatedIndices[FlattenAllInidces][[All,1,1]];
+FirstTensor=First[tList];
+d=CoordinatesDimension[FirstTensor];
+DeleteContractIndicesR=(#->Nothing)&/@ContractIndices;
+InertIndices=IndicesFirst/.DeleteContractIndicesR;
+ContractIndicesRange={#,1,d}&/@ContractIndices;
+InertIndicesRange={#,1,d}&/@InertIndices;
+tcList=TensorComponents[#]&/@tList;
+mtx=Table[Sum[(Times@@Table[Part[tcList[[ii]],Sequence@@allInidcesRemovePosition[[ii]]],{ii,1,tl}]),Evaluate[Sequence@@ContractIndicesRange]],Evaluate[Sequence@@InertIndicesRange]];
+FirstTensor=FirstTensor/.{(TensorComponents->OldTC_)->(TensorComponents->mtx)};
+FirstTensor=TensorName[FirstTensor,TensorName[tList]];
+FirstTensor=Indices[FirstTensor,(Flatten[(Indices[#]&/@tList)]/.((#:>UnderBar[#]&)/@ContractIndices))]
+];
 
 
 (* ::Input::Initialization:: *)
 (* SwapIndices returns tt except the indices are permuted into idx; i.e. Indices[tt] \[Rule] idx *)
 (* idx does not include the UnderBarred indices in tt *)
-SwapIndices[tt_Tensor,idx_List]/;((Sort[RemoveUnderBarredIndices[Indices[tt]]]===Sort[idx])&&(Union[(CheckIndex[#/.UnderBar[ss_]->ss]&/@idx)]==={True})):=tt/.{
+SwapIndices[tt_Tensor,idx_List]/;((Sort[RemoveUnderBarredIndices[Indices[tt]]]===Sort[idx])&&(Union[(TestIndices[#/.UnderBar[ss_]->ss]&/@idx)]==={True})):=tt/.{
 (* replace TensorComponents *)
 (TensorComponents->ss_):>(TensorComponents->Transpose[
 TensorComponents[tt],Flatten[Position[(* this is the ordering of indices we want *)idx,#]&/@RemoveUnderBarredIndices[Indices[tt]]]]),
@@ -1020,14 +2382,15 @@ TensorComponents[tt],Flatten[Position[(* this is the ordering of indices we want
 (* idx does not include the UnderBarred indices in tt but has to contain the same number of indices *)
 (* idx may also contain coordinates; i.e., MoveIndices should be able to do evaluate specific components of the tensor *)
 (* new code *)
-MoveIndices[tt_Tensor,idx_List,m_Tensor]/;((* check that there are same number of indices in tt and idx *)(Length[RemoveUnderBarredIndices[Indices[tt]]]===Length[idx])&&((* check idx contain proper indices *)Union[(CheckIndex/@idx)]==={True})&&((* check m is a Metric; we are going use it to move the indices with *)CheckMetricTensor[m])):=Module[
+
+MoveIndices[tt_Tensor,idx_List,m_Tensor]/;((* check that there are same number of indices in tt and idx *)(Length[RemoveUnderBarredIndices[Indices[tt]]]===Length[idx])&&((* check idx contain proper indices *)(*MoveIndices for scalar*)(Union[(TestIndices/@idx)]==={True})||(Union[(TestIndices/@idx)]==={}))&&((* check m is a Metric; we are going use it to move the indices with *)TestMetricTensor[m])(*OrthonormalFrameField*)&&(*check if the type of indices are all preserved*)((MatchQ[Union[Thread[(OverHatSgn[#]&/@idx) (OverHatSgn[#]&/@RemoveUnderBarredIndices[Indices[tt]])]],({}|{1})])&&(*We can only move on type of index, in coordinate basis or orthonormal basis*)TestMoveOnlyOneType[tt,idx])):=Module[
 {outputindices,ttix,outputtensor,s,g,Invg,xxx123,i123,\[Mu],\[Nu]},
 (* extract relevant indices of tt *)
 ttix=RemoveUnderBarredIndices[Indices[tt]];
 (* we will replace the indices of tt with idx *)
 outputindices=Thread[Rule[ttix,idx]];
 (* start with *)
-outputtensor=TensorComponents[tt];
+outputtensor=Normal[TensorComponents[tt]];
 (* first compute metric and inverse and extract TensorComponents of tt *)
 g=TensorComponents[Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],m]];
 Invg=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]];
@@ -1053,21 +2416,89 @@ s===Length[idx],TensorContract[TensorProduct[outputtensor,g],{{s,Length[idx]+1}}
 tt/.{(TensorComponents->xxx123_)->(TensorComponents->outputtensor),(Indices->i123_):>(Indices->(i123/.outputindices))}
 ];
 
+(*OrthonormalFrameField*)
+MoveIndices[tt_Tensor,idx_List,m_Tensor]/;((* check that there are same number of indices in tt and idx *)(Length[RemoveUnderBarredIndices[Indices[tt]]]===Length[idx])&&((* check idx contain proper indices *)Union[(TestIndices/@idx)]==={True})&&((* check m is a Metric; we are going use it to move the indices with *)TestMetricTensor[m])&&(Cases[{m},(OrthonormalFrameField->onff_)->onff,1]=!={Null})&&(Cases[{m},(InverseOrthonormalFrameField->invonff_)->invonff,1]=!={Null})&&!((Union[Thread[(OverHatSgn[#]&/@idx) (OverHatSgn[#]&/@RemoveUnderBarredIndices[Indices[tt]])]]==={1})&&TestMoveOnlyOneType[tt,idx])):=Module[
+{outputindices,ttix,outputtensor,i123,rank,idxlist,tttemp,idxlist2,fm,onff,invonff,fmT,\[Mu],\[Nu],cc,s,ii},
+(*basic arguments*)
+rank=RankNumber[idx];
+ttix=RemoveUnderBarredIndices[Indices[tt]];
+(*Obtain indices list with indices only be moved by metric.*)
+idxlist={};
+Do[Which[(Sgn[ttix[[ii]]] Sgn[idx[[ii]]]===-1)&&OverHatSgn[ttix[[ii]]]===-1,idxlist=Append[idxlist,(ttix[[ii,1]]//idx[[ii,0]])],True,idxlist=Append[idxlist,ttix[[ii]]]],{ii,1,rank}];
+(*First MoveIndices with metric*)
+tttemp=MoveIndices[tt,idxlist,m];
+(*Obtain indices list with indices only be moved by FlatMetric.*)
+idxlist2={};
+Do[idxlist2=Append[idxlist2,(idxlist[[ii,1]]//idx[[ii,0]])],{ii,1,rank}];
+(*Extract FlatMetric and orthonormal frame field stuff.*)
+fm=Cases[m,(FlatMetric->cc_)->cc,1][[1]];
+onff=TensorComponents[Cases[m,(OrthonormalFrameField->cc_)->cc,1][[1]]];
+invonff=TensorComponents[Cases[m,(InverseOrthonormalFrameField->cc_)->cc,1][[1]]];
+(*Declare FlatMetric as a Tensor*)
+fmT=Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],fm,TensorName->"g",Coordinates->Coordinates[m],StartIndex->StartIndex[m]];
+(*Second MoveIndices with FlatMetric.*)
+tttemp=MoveIndices[tttemp,idxlist2,fmT];
+(* we will replace the indices of tt with idx *)
+outputindices=Thread[Rule[ttix,idx]];
+(* start with *)
+outputtensor=TensorComponents[tttemp];
+(* we will run through all relevant indices of tt *)
+(* compare each slot with the corresponding one in idx *)
+(*Transform between orthonormal coordinate and basis coordinate.*)
+Do[
+Which[
+(*Subscript[Overscript[\[Alpha], ^], -]\[Rule]Subscript[\[Mu], -]*)
+(Sgn[idxlist2[[s]]]===-1)&&(OverHatSgn[idxlist2[[s]]]===1)&&(Sgn[idx[[s]]]===-1)&&(OverHatSgn[idx[[s]]]===-1),
+outputtensor=Which[
+s<rank,Transpose[TensorContract[TensorProduct[outputtensor,(*Contract w/ Subscript[\[Epsilon]^Overscript[\[Alpha], ^], \[Mu]]*)onff],{{s,rank+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,rank],s}],
+(*Least index doesn't need a Transpose.*)s===rank,TensorContract[TensorProduct[outputtensor,(*Contract w/ Subscript[\[Epsilon]^Overscript[\[Alpha], ^], \[Mu]]*)onff],{{s,rank+1}}]],
+(*Subscript[\[Mu], -]\[Rule]Subscript[Overscript[\[Alpha], ^], -]*)
+(Sgn[idxlist2[[s]]]===-1)&&(OverHatSgn[idxlist2[[s]]]===-1)&&(Sgn[idx[[s]]]===-1)&&(OverHatSgn[idx[[s]]]===1),
+outputtensor=Which[
+s<Length[idx],Transpose[TensorContract[TensorProduct[outputtensor,(*Contract w/ Subscript[\[Epsilon], Overscript[\[Alpha], ^]]^\[Mu]*)invonff],{{s,Length[idx]+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,Length[idx]],s}],
+s===Length[idx],TensorContract[TensorProduct[outputtensor,invonff],{{s,Length[idx]+1}}]],
+(*\[Mu]^-\[Rule]Overscript[\[Alpha], ^]^-*)
+(Sgn[idxlist2[[s]]]===1)&&(OverHatSgn[idxlist2[[s]]]===-1)&&(Sgn[idx[[s]]]===1)&&(OverHatSgn[idx[[s]]]===1),
+outputtensor=Which[
+s<Length[idx],Transpose[TensorContract[TensorProduct[outputtensor,(*Contract w/ Subscript[\[Epsilon]^Overscript[\[Alpha], ^], \[Mu]]*)onff],{{s,Length[idx]+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,Length[idx]],s}],
+s===Length[idx],TensorContract[TensorProduct[outputtensor,onff],{{s,Length[idx]+1}}]],
+(*Overscript[\[Alpha], ^]^-\[Rule]\[Mu]^-*)
+(Sgn[idxlist2[[s]]]===1)&&(OverHatSgn[idxlist2[[s]]]===1)&&(Sgn[idx[[s]]]===1)&&(OverHatSgn[idx[[s]]]===-1),
+outputtensor=Which[
+s<Length[idx],Transpose[TensorContract[TensorProduct[outputtensor,(*Contract w/ Subscript[\[Epsilon], Overscript[\[Alpha], ^]]^\[Mu]*)invonff],{{s,Length[idx]+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,Length[idx]],s}],
+s===Length[idx],TensorContract[TensorProduct[outputtensor,invonff],{{s,Length[idx]+1}}]]
+],{s,1,Length[idx]}];
+(* output *)
+tttemp/.{(TensorComponents->xxx123_)->(TensorComponents->outputtensor),(Indices->i123_):>(Indices->(Indices[tt]/.outputindices))}
+];
+
+MoveIndices[tt_Tensor,OrthonormalBasis,m_Tensor]/;((* check that there are same number of indices in tt and idx *)((* check m is a Metric; we are going use it to move the indices with *)TestMetricTensor[m])&&(Cases[{m},(OrthonormalFrameField->onff_)->onff,1]=!={Null})&&(Cases[{m},(InverseOrthonormalFrameField->invonff_)->invonff,1]=!={Null})&&(!Quiet[TestMetricTensor[tt]])):=MoveIndices[tt,Which[OverHatSgn[#]===1,#,OverHatSgn[#]===-1,(OverHat[#[[1]]])//#[[0]]]&/@RemoveUnderBarredIndices[Indices[tt]],m]
+
+MoveIndices[tt_Tensor,CoordinateBasis,m_Tensor]/;((* check that there are same number of indices in tt and idx *)((* check m is a Metric; we are going use it to move the indices with *)TestMetricTensor[m])&&(Cases[{m},(OrthonormalFrameField->onff_)->onff,1]=!={Null})&&(Cases[{m},(InverseOrthonormalFrameField->invonff_)->invonff,1]=!={Null})&&(*NewCode: ExtractFunctions*)(!Quiet[TestMetricTensor[tt]])):=MoveIndices[tt,Which[OverHatSgn[#]===1,#[[1,1]]//#[[0]],OverHatSgn[#]===-1,#]&/@RemoveUnderBarredIndices[Indices[tt]],m]
+
 
 (* ::Input::Initialization:: *)
 (* RaiseAllIndices[tt_Tensor,m_Tensor] returns tt with all its indices raised *)
-RaiseAllIndices[t_Tensor,m_Tensor]/;CheckMetricTensor[m]:=Module[{idx},
+RaiseAllIndices[t_Tensor/;!TestScalarTensor[t],m_Tensor/;TestMetricTensor[m]]:=Module[{idx},
 (* strip off all the SubMinus and SuperMinus and then replace them all with SuperMinus *)
 idx=SuperMinus[#]&/@(#[[1]]&/@RemoveUnderBarredIndices[Indices[t]]);
 MoveIndices[t,idx,m]];
 
+RaiseAllIndices[t_Tensor/;TestScalarTensor[t],m_Tensor/;TestMetricTensor[m]]:=t
+
+RaiseAllIndices[t_/;TestExpressionForm[t],m_Tensor/;TestMetricTensor[m]]:=t
+
 
 (* ::Input::Initialization:: *)
 (* LowerAllIndices[tt_Tensor,m_Tensor] returns tt with all its indices lowered *)
-LowerAllIndices[t_Tensor,m_Tensor]/;CheckMetricTensor[m]:=Module[{idx},
+LowerAllIndices[t_Tensor/;!TestScalarTensor[t],m_Tensor/;TestMetricTensor[m]]:=Module[{idx},
 (* strip off all the SubMinus and SuperMinus and then replace them all with SuperMinus *)
 idx=SubMinus[#]&/@(#[[1]]&/@RemoveUnderBarredIndices[Indices[t]]);
 MoveIndices[t,idx,m]];
+
+LowerAllIndices[t_Tensor/;TestScalarTensor[t],m_Tensor/;TestMetricTensor[m]]:=t
+
+LowerAllIndices[t_/;TestExpressionForm[t],m_Tensor/;TestMetricTensor[m]]:=t
 
 
 (* ::Input::Initialization:: *)
@@ -1081,139 +2512,249 @@ t/.(Indices->xxx_):>(Indices->(xxx/.idx))];
 
 
 (* ::Input::Initialization:: *)
+(*SymmetrizeIndices*)
+(*Partially SymmetrizeIndices*)
+SymmetrizeIndices[TargetIndices_List,t_Tensor,opts:OptionsPattern[]]/;(*Check: All indices in TargetIndices should be included in Indices list of t*)(SubsetQ[RemoveUnderBarredIndices[Indices[t]],TargetIndices]):=Module[{indices,indices2,takelist,targetposition,newindiceslist,m,UntouchedIdx, ListwithVerticleBar},
+(*indices2: Extract extracting Indices list preserving UnderBar. This will be used at the end*)
+indices2=Indices[t];
+(*indices:Extract Indices list removing UnderBar. Since UnderBar has no meaning in this operation,we should remove them first.*)
+indices=RemoveUnderBarredIndices[indices2];
+(*UntouchedIdx: To add curly bracket and vertical bar in the output indices list, we should extract those indices in indices list excluded from TargetIndices. We use Complement to get it.*)
+UntouchedIdx=Complement[indices,TargetIndices];
+(*targetposition: We convert TargetIndices into the position number.*)
+targetposition=Sort[Flatten[Position[indices,#]&/@TargetIndices]];
+(*m is the output TensorComponents. We get the symmetrized tensor of "t".*)
+(*Note that in our definition, we have a factorial coefficient difference w/ Mathematica's one.*)m=Length[TargetIndices]!Normal[Symmetrize[TensorComponents[t],Symmetric[targetposition]]]//OptionValue[SymmetrizeIndicesOperator];
+(*From here,we start to prepare the output indices list.*)
+(*Take the list between the first and the last indices which need to be symmetrize.*)
+takelist=Take[indices,{First[targetposition],Last[targetposition]}];
+(*Extract the indices which need to add vertical bars around them,by getting intersection of takelist and UntouchedIdx*)
+ListwithVerticleBar=takelist\[Intersection]UntouchedIdx;
+(*Output indices list*)newindiceslist=indices2/.{First[TargetIndices]->Sequence[UnderBar["{"]//(First[TargetIndices])[[0]],First[TargetIndices]],Last[TargetIndices]->Sequence[Last[TargetIndices],UnderBar["}"]//(Last[TargetIndices])[[0]]],Sequence@@(Rule[#,Sequence[UnderBar["|"]//#[[0]],#,UnderBar["|"]//#[[0]]]]&/@ListwithVerticleBar)};
+(*Change TensorComponents and Indices*)
+t/.{(TensorComponents->mx_)->(TensorComponents->m),(Indices->idx_)->(Indices->newindiceslist)}
+];
+(*Fully SymmetrizeIndices*)
+SymmetrizeIndices[t_Tensor,opts:OptionsPattern[]]:=SymmetrizeIndices[(*Recall Partially SymmetrizeIndices, but symmetrize w/ all indices.*)RemoveUnderBarredIndices[Indices[t]],t,SymmetrizeIndicesOperator->OptionValue[SymmetrizeIndicesOperator]];
+
+
+(* ::Input::Initialization:: *)
+(*AntiSymmetrizeIndices*)
+(*Partially Anti-SymmetrizeIndices*)
+AntiSymmetrizeIndices[TargetIndices_List,t_Tensor,opts:OptionsPattern[]]/;(*Check: All indices in TargetIndices should be included in Indices list of t*)(SubsetQ[RemoveUnderBarredIndices[Indices[t]],TargetIndices]):=Module[{indices,indices2,takelist,targetposition,newindiceslist,m,UntouchedIdx, ListwithVerticleBar},
+(*indices2: Extract extracting Indices list preserving UnderBar. This will be used at the end*)
+indices2=Indices[t];
+(*indices:Extract Indices list removing UnderBar. Since UnderBar has no meaning in this operation,we should remove them first.*)
+indices=RemoveUnderBarredIndices[indices2];
+(*UntouchedIdx: To add square bracket and vertical bar in the output indices list, we should extract those indices in indices list excluded from TargetIndices. We use Complement to get it.*)
+UntouchedIdx=Complement[indices,TargetIndices];
+(*targetposition: We convert TargetIndices into the position number.*)
+targetposition=Sort[Flatten[Position[indices,#]&/@TargetIndices]];
+(*m is the output TensorComponents. We get the anti-symmetrized tensor of "t".*)
+(*Note that in our definition, we have a factorial coefficient difference w/ Mathematica's one.*)m=Length[TargetIndices]!Normal[Symmetrize[TensorComponents[t],Antisymmetric[targetposition]]]//OptionValue[AntiSymmetrizeIndicesOperator];
+(*From here,we start to prepare the output indices list.*)
+(*Take the list between the first and the last indices which need to be anti-symmetrized.*)
+takelist=Take[indices,{First[targetposition],Last[targetposition]}];
+(*Extract the indices which need to add vertical bars around them,by getting intersection of takelist and UntouchedIdx*)ListwithVerticleBar=takelist\[Intersection]UntouchedIdx;
+(*Output indices list*)newindiceslist=indices2/.{First[takelist]->Sequence[UnderBar["["]//(First[takelist])[[0]],First[takelist]],Last[takelist]->Sequence[Last[takelist],UnderBar["]"]//(Last[takelist])[[0]]],Sequence@@(Rule[#,Sequence[UnderBar["|"]//#[[0]],#,UnderBar["|"]//#[[0]]]]&/@ListwithVerticleBar)};
+(*Change TensorComponents and Indices*)
+t/.{(TensorComponents->mx_)->(TensorComponents->m),(Indices->idx_)->(Indices->newindiceslist)}
+];
+(*Fully-AntiSymmetrizeIndices*)
+AntiSymmetrizeIndices[t_Tensor,opts:OptionsPattern[]]:=AntiSymmetrizeIndices[(*Recall Partially AntiSymmetrizeIndices, but symmetrize w/ all indices.*)RemoveUnderBarredIndices[Indices[t]],t,AntiSymmetrizeIndicesOperator->OptionValue[AntiSymmetrizeIndicesOperator]];
+
+
+(* ::Input::Initialization:: *)
 (* Partial derivative on a scalar: \!\(
-\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]stuff\) using the metric m *)
-(* Same as CovariantD *)
-PartialD[\[Mu]T_/;CheckIndex[\[Mu]T],stuff_,m_Tensor]/;((ScalarTest[stuff]||(Union[Cases[{stuff},Tensor[xx___],\[Infinity]]]==={}))&&(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})):=CovariantD[\[Mu]T,stuff,m];
-(* Partial derivative \!\(
-\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]Tensor\) using the metric m *)
+\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]stuff\) or \[Del]^\[Mu]stuff using the metric m *)
+(* scalar, Same as CovariantD *)
+PartialD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_,m_Tensor]/;((*Scalar Tensor Form*)(TestScalarTensor[stuff]||(*Scalar Expression Form*)(*TestExpressionForm*)TestExpressionForm[stuff])&&(*m is a Metric*)(TestMetricTensor[m])):=(*Recall CovariantD*)CovariantD[\[Mu]T,stuff,m];
+
+(*PartialD on a scalar (as a expression form) with given coordinates list.*)
+PartialD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_,Coordinates->coords_List]/;(*Scalar Expression Form*)TestExpressionForm[stuff]:=
+(*Recall by "PartialD for downstair on Tensor w/o third argument" code.*)
+PartialD[\[Mu]T,(*Declare a new Tensor*)NonMetricTensor[{},stuff,stuff,Coordinates->coords]]
+
+
 (* Note III. Internally we build the PartialD as a Tensor with abstract indices then replace the \[PartialD]-index with \[Mu]T *)
-PartialD[\[Mu]T_/;CheckIndex[\[Mu]T],\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!ScalarTest[\[Tau]T])&&(* check m is a Metric *)(Cases[m,(TensorType->tt_)->tt]==={"Metric"})&&MatchQ[\[Mu]T,SubMinus[_]]):=Module[
-{coords,\[Mu]TT,grad,\[Mu],\[Nu],\[Sigma],\[Lambda],\[Kappa],lgth,idx,ii,invmetricM,\[CapitalSigma],indices,TensorMatrix,ChristT,partialT,output,out,outputindices},
+(*PartialD for downstair on Tensor w/o the third argument (metric)*)
+PartialD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor]/;(*Notice that now we accept a scalar or tensor as Tensor object. There is no scalar check*)MatchQ[\[Mu]T,SubMinus[_]](*Check for downstair*):=Module[
+{coords,\[Mu]TT,grad,\[Mu],\[Nu],\[Sigma],\[Lambda],\[Kappa],lgth,si,ii,invmetricM,\[CapitalSigma],indices,TensorMatrix,ChristT,partialT,output,out,outputindices,FinalTensorType},
 (* output Tensor has the following indices *)
 outputindices={\[Mu]T,Sequence@@Indices[\[Tau]T]};
 (* extract coordinates *)
-coords=Coordinates[m];lgth=Length[coords];
+coords=Coordinates[\[Tau]T];
+(*Dimension*)
+lgth=Length[coords];
 (* extract StartIndex *)
-idx=Cases[m,(StartIndex->ii_)->ii,\[Infinity]][[1]];
+si=StartIndex[\[Tau]T];
 (* extract indices of \[Tau]T *)
 indices=Indices[\[Tau]T];
 (* extract components of \[PartialD](\[Tau]T) as a matrix *)
-output=Table[D[\[Tau]T,coords[[\[Sigma]]]],
-{\[Sigma],1,lgth},Evaluate[Sequence@@({#[[1]],idx,idx+lgth-1}&/@RemoveUnderBarredIndices[indices])]];
+output=Table[TensorComponents[(*Recall "Derivative for Tensor".*)PartialD[\[Tau]T,coords[[\[Sigma]]]]],
+{\[Sigma],1,lgth}];
+
+(*Prepend \[Mu]T in to new Indices list, add a "\[PartialD]" mark in front of TensorName, and update the TensorComponents.*)
 \[Tau]T/.{
-(* We change the TensorType so that even the CovariantD of a Metric will be displayed properly *)
-(TensorType->ttt_)->(TensorType->"PartialDerivative(s)"),
 (Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
-(TensorName->nnn_):>(TensorName->"\[PartialD]"[Cases[\[Tau]T,(TensorName->nn_)->nn,\[Infinity]][[1]]]),
+(TensorName->nnn_):>(TensorName->"\[PartialD]"[TensorName[\[Tau]T]]),
 (TensorComponents->ccc_)->(TensorComponents->output)
 }
 ];
-(* Covariant derivative \[PartialD]^\[Mu]Tensor using the metric m *)
-PartialD[\[Mu]T_/;CheckIndex[\[Mu]T],\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!ScalarTest[\[Tau]T])&&(* check m is a Metric *)(Cases[m,(TensorType->tt_)->tt]==={"Metric"})&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[{\[Sigma],\[Mu]TT,tempT},
-tempT=PartialD[SubMinus[\[Sigma]],\[Tau]T,m];
+
+(* Partial derivative \!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]Tensor\) using the metric m *)
+(*PartialD for given Metric or Coordinates list on Tensor as the third argument (Optional) (downstair PartialD).*)
+PartialD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor,(m_Tensor|(Coordinates->coordslist_List))]/;((* Given m is a Metric, coordslist is Null.*)(((TestMetricTensor[m]===True)&&(coordslist===Null))||(*Given coordslist, m is Null*)((m===Null)&&!(coordslist===Null)))&&(*\[Mu]T is downstair*)MatchQ[\[Mu]T,SubMinus[_]]):=Module[
+{coords,\[Mu]TT,grad,\[Mu],\[Nu],\[Sigma],\[Lambda],\[Kappa],lgth,si,ii,invmetricM,\[CapitalSigma],indices,TensorMatrix,ChristT,partialT,output,out,outputindices,FinalTensorType},
+(* output Tensor has the following indices *)
+outputindices={\[Mu]T,Sequence@@Indices[\[Tau]T]};
+(* extract coordinates *)
+Which[m===Null,coords=coordslist,True,coords=Coordinates[m]];
+lgth=Length[coords];
+(* extract StartIndex *)
+si=StartIndex[\[Tau]T];
+(* extract indices of \[Tau]T *)
+indices=Indices[\[Tau]T];
+(* extract components of \[PartialD](\[Tau]T) as a matrix *)
+output=Table[TensorComponents[PartialD[\[Tau]T,coords[[\[Sigma]]]]],
+{\[Sigma],1,lgth}];
+
+(*Prepend \[Mu]T in to new Indices list, add a "\[PartialD]" mark in front of TensorName, and update the TensorComponents.*)
 \[Tau]T/.{
-(* We change the TensorType so that even the CovariantD of a Metric will be displayed properly *)
-(TensorType->ttt_)->(TensorType->"PartialDerivative(s)"),
 (Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
-(TensorName->nnn_):>(TensorName->"\[PartialD]"[Cases[\[Tau]T,(TensorName->nn_)->nn,\[Infinity]][[1]]]),
-(TensorComponents->ccc_)->(TensorComponents->TensorContract[TensorProduct[TensorComponents[Metric[SuperMinus[\[Mu]TT],SuperMinus[\[Sigma]],m]],TensorComponents[tempT]],{{2,3}}])
+(*NewCode: ExtractFunctions*)
+(TensorName->nnn_):>(TensorName->"\[PartialD]"[TensorName[\[Tau]T]]),
+(TensorComponents->ccc_)->(TensorComponents->output)
 }
 ];
+
+(* Covariant derivative \[PartialD]^\[Mu]Tensor using the metric m (upper index)*)
+PartialD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars, to not conflict w/ previous code. Check \[Tau]T is not a scalar*)(!TestScalarTensor[\[Tau]T])&&(* check m is a Metric *)(TestMetricTensor[m])&&(*upper index*)MatchQ[\[Mu]T,SuperMinus[_]]):=Module[{\[Sigma],\[Mu]TT,tempT,FinalTensorType},
+tempT=PartialD[SubMinus[\[Sigma]],\[Tau]T,m];
+
+\[Tau]T/.{
+(*Prepend \[Mu]T in to new Indices list, add a "\[PartialD]" mark in front of TensorName, and update the TensorComponents.*)
+(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),(*NewCode: ExtractFunctions*)
+(TensorName->nnn_):>(TensorName->"\[PartialD]"[TensorName[\[Tau]T]]),
+(TensorComponents->ccc_)->(TensorComponents->TensorContract[TensorProduct[(*Matrix multiplication w/ inverse metric*)TensorComponents[Metric[SuperMinus[\[Mu]TT],SuperMinus[\[Sigma]],m]],TensorComponents[tempT]],{{2,3}}])
+}
+];
+
+(*This allow us not to derivative w/ coord. list. For e.g., if the coord. list is {x,y,z}, we can derivative w.r.t {Overscript[x, .],Overscript[y, .],Overscript[z, .]} by inputting as the third argument. Right now it's supposed not to be a offical code. So I named it as PartialDWeiHao.*)
+PartialDWeiHao[\[Mu]T_/;(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor,Dlist_List]/;MatchQ[\[Mu]T,SubMinus[_]](*Check for downstair*):=Module[
+{coords,\[Mu]TT,grad,\[Mu],\[Nu],\[Sigma],\[Lambda],\[Kappa],lgth,si,ii,invmetricM,\[CapitalSigma],indices,TensorMatrix,ChristT,partialT,output,out,outputindices,FinalTensorType},
+(* output Tensor has the following indices *)
+outputindices={\[Mu]T,Sequence@@Indices[\[Tau]T]};
+(* extract coordinates *)
+coords=Coordinates[\[Tau]T];
+lgth=Length[coords];
+(* extract StartIndex *)
+si=StartIndex[\[Tau]T];
+(* extract indices of \[Tau]T *)
+indices=Indices[\[Tau]T];
+(* extract components of \[PartialD](\[Tau]T) as a matrix *)
+output=Table[TensorComponents[(*Recall "Derivative for Tensor".*)PartialD[\[Tau]T,(*Note that it's Dlist*)Dlist[[\[Sigma]]]]],
+{\[Sigma],1,lgth}];
+(*Prepend \[Mu]T in to new Indices list, add a "\[PartialD]" mark in front of TensorName, and update the TensorComponents.*)
+\[Tau]T/.{
+(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
+(TensorName->nnn_):>(TensorName->"\[PartialD]"[TensorName[\[Tau]T]]),
+(TensorComponents->ccc_)->(TensorComponents->output)
+}
+];
+
+(*Short-hand for PartialD*)
+(*See also: Derivative for Tensor*)
+Tensor/:D[t_Tensor,SubMinus[\[Mu]T_Symbol]]:=PartialD[SubMinus[\[Mu]T],t]
+
 
 
 (* ::Input::Initialization:: *)
 (* Covariant derivative on a scalar: \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]stuff\) using the metric m *)
 (* stuff with no Tensor Head *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],stuff_,m_Tensor]/;((Union[Cases[{stuff},Tensor[xx___],\[Infinity]]]==={})&&(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})&&MatchQ[\[Mu]T,SubMinus[_]]):=Module[
-{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,output},
+CovariantD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_,m_Tensor]/;(TestExpressionForm[stuff]&&(*NewCode: ExtractFunctions*)(TestMetricTensor[m])&&MatchQ[\[Mu]T,SubMinus[_]]):=Module[
+{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,output,outputt},
 (* extract coordinates *)
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* return Tensor *)
 output=(D[stuff,#]&/@coords);
 Tensor[
-TensorType->"Gradient",
 TensorName->Del[stuff],
-Indices->{\[Mu]T},StartIndex->idx,CoordinateSystem->coords,
-TooltipDisplay->output,
-TensorComponents->output
+Indices->{\[Mu]T},StartIndex->idx,Coordinates->coords,
+TensorComponents->output,
+TooltipStyle-> TooltipStyle[m]
 ]
 ];
 (* stuff w/ Tensor head *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],stuff_Tensor,m_Tensor]/;((* check stuff is indeed a scalar *)ScalarTest[stuff]&&(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})&&MatchQ[\[Mu]T,SubMinus[_]]):=Module[
-{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,contents,output},
+CovariantD[\[Mu]T_/;(* Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_Tensor,m_Tensor]/;((* check stuff is indeed a scalar *)TestScalarTensor[stuff]&&(TestMetricTensor[m])&&MatchQ[\[Mu]T,SubMinus[_]]):=Module[
+{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,contents,output,outputt},
 (* extract coordinates *)
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* contents of stuff *)
 contents=TensorComponents[stuff];
 (* return Tensor *)
 output=(D[contents,#]&/@coords);
-Tensor[
-TensorType->"Gradient",
-TensorName->Del[Cases[stuff,(TensorName->ii_)->ii,\[Infinity]][[1]]],
-Indices->{\[Mu]T},StartIndex->idx,CoordinateSystem->coords,
-TooltipDisplay->output,
-TensorComponents->output
-]
+outputt=stuff;
+outputt=TensorName[outputt,Del[TensorName[stuff]]];
+outputt=Indices[outputt,{\[Mu]T}];
+outputt=StartIndex[outputt,idx];
+outputt=Coordinates[outputt,coords];
+(outputt/.{(TensorComponents-> tc_)->  (TensorComponents->output)})
 ];
 (* Covariant derivative on a scalar: \[Del]^\[Mu]stuff using the metric m *)
 (* stuff with no Tensor Head *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],stuff_,m_Tensor]/;((Union[Cases[{stuff},Tensor[xx___],\[Infinity]]]==={})&&(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[
-{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,invmetricM,output},
+CovariantD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_,m_Tensor]/;(TestExpressionForm[stuff]&&(TestMetricTensor[m])&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[
+{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,invmetricM,output,outputt},
 (* extract coordinates *)
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* extract inverse metric as a matrix *)
 invmetricM=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]];
 (* return Tensor *)
-output=invmetricM . (D[stuff,#]&/@coords);
+output=invmetricM.(D[stuff,#]&/@coords);
 Tensor[
-TensorType->"Gradient",
 TensorName->Del[stuff],
-Indices->{\[Mu]T},StartIndex->idx,
-CoordinateSystem->coords,
-(* g^\[Mu]\[Nu]\!\(
-\*SubscriptBox[\(\[PartialD]\), \(\[Nu]\)]stuff\) *)
-TooltipDisplay->output,
-TensorComponents->output
+Indices->{\[Mu]T},StartIndex->idx,Coordinates->coords,
+TensorComponents->output,
+TooltipStyle-> TooltipStyle[m]
 ]
 ];
 (* stuff w/ Tensor head *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],stuff_Tensor,m_Tensor]/;((* check stuff is indeed a scalar *)ScalarTest[stuff]&&(Cases[m,(TensorType->tt_)->tt,\[Infinity]]==={"Metric"})&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[
-{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,contents,invmetricM,output},
+CovariantD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),stuff_Tensor,m_Tensor]/;((* check stuff is indeed a scalar *)TestScalarTensor[stuff]&&(TestMetricTensor[m])&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[
+{coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii,contents,invmetricM,output,outputt},
 (* extract coordinates *)
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* contents of stuff *)
 contents=TensorComponents[stuff];
 (* extract inverse metric as a matrix *)
 invmetricM=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]];
 (* return Tensor *)
-output=invmetricM . (D[contents,#]&/@coords);
-Tensor[
-TensorType->"Gradient",
-TensorName->Del[Cases[stuff,(TensorName->ii_)->ii,\[Infinity]][[1]]],
-Indices->{\[Mu]T},StartIndex->idx,CoordinateSystem->coords,
-TooltipDisplay->output,
-TensorComponents->output
-]
+output=invmetricM.(D[contents,#]&/@coords);
+outputt=stuff;
+outputt=TensorName[outputt,Del[TensorName[stuff]]];
+outputt=Indices[outputt,{\[Mu]T}];
+outputt=StartIndex[outputt,idx];
+outputt=Coordinates[outputt,coords];
+(outputt/.{(TensorComponents-> tc_)->  (TensorComponents->output)})
 ];
 
 
 (* ::Input::Initialization:: *)
 (* Covariant derivative \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]Tensor\) using the metric m *)
-(* Note I. If \[Tau]T contains non-repeated UnderBarred indices then we cannot take its CovariantD because there isn't enough info since we'd have to sum over other components of the Tensor that are not available. *)
+(* Note I. If \[Tau]T contains non-repeated UnderBarred indices then we cannot take its CovariantD because there isn't enough info since we'd have to sum over other components of the Tensor that are not avai. *)
 (* Note II. If \[Tau]T contains repeated UnderBarred indices ___ SubMinus[UnderBar[\[Mu]]] ___ SuperMinus[UnderBar[\[Mu]]] ___ then these indices are "scalars" and do not take part in the CovariantD process *)
 (* Note III. Internally we build the CovariantD as a Tensor with abstract indices then replace the Del-index with \[Mu]T *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!ScalarTest[\[Tau]T])&&(* check m is a Metric *)(Cases[m,(TensorType->tt_)->tt]==={"Metric"})&&MatchQ[\[Mu]T,SubMinus[_]]&&((* check for non-repeating UnderBarred Indices *)RemoveRepeatedUnderBarredIndices[Union[Flatten[Cases[Indices[\[Tau]T],(SuperMinus|SubMinus)[UnderBar[_]],\[Infinity]]]]]==={})):=Module[
+CovariantD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!TestScalarTensor[\[Tau]T])&&(* check m is a Metric *)(TestMetricTensor[m])&&(*\[Del] on \[CapitalGamma] is not a correct definition.*)(*Do not allow CovariantD operator on a Christoffel*)(TensorTypeNoPart[\[Tau]T]=!={"ChristoffelSymbols"})&&MatchQ[\[Mu]T,SubMinus[_]]&&((* check for non-repeating UnderBarred Indices *)RemoveRepeatedUnderBarredIndices[Union[Flatten[Cases[Indices[\[Tau]T],(SuperMinus|SubMinus)[UnderBar[_]],\[Infinity]]]]]==={})(*NewCode: \[Del]g=0*)&&(\[Tau]T=!=m)):=Module[
 {coords,ttM,\[Mu]TT,\[CapitalGamma]M,grad,\[Mu],\[Nu],\[Sigma],\[Lambda],\[Kappa],lgth,idx,ii,invmetricM,\[CapitalSigma],indices,TensorMatrix,ChristT,partialT,output,out,outputindices},
 (* Christoffel symbol *)
 \[CapitalGamma]M=TensorComponents[Christoffel[SuperMinus[\[Mu]],SubMinus[\[Nu]],SubMinus[\[Sigma]],m]];
@@ -1222,80 +2763,37 @@ outputindices={\[Mu]T,Sequence@@Indices[\[Tau]T]};
 (* extract coordinates *)
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Cases[m,(StartIndex->ii_)->ii,\[Infinity]][[1]];
+idx=StartIndex[m];
 (* extract indices of \[Tau]T *)
 (* remove repeated UnderBarred indices because they are irrelevant as far as CovariantD is concerned *)
 indices=RemoveRepeatedUnderBarredIndices[Indices[\[Tau]T]];
 (* extract components of \[Tau]T as a matrix *)
 TensorMatrix=TensorComponents[\[Tau]T];
-(* prepare summation indices *)
-(* ... first prepare summation indices *)
-\[CapitalSigma]=Unique[\[Sigma]]&/@Range[1,Length[indices]];
-(* ... then prepare summation indices and their summation range 1...d *)
-\[Lambda]=Thread[{\[CapitalSigma],1,Dimensions[TensorMatrix]}];
-\[Kappa]=(#[[1]]&/@\[Lambda]);
 (* partial derivative terms *)
 partialT=Table[D[TensorMatrix,coords[[\[Sigma]]]],{\[Sigma],1,Length[coords]}(*,Evaluate[(Sequence@@\[Lambda])]*)];
 (* Christoffel terms *)
-(* be careful re. ordering of indices *)
-(* We contract Christoffel with Tensor (wrt to appropriate slot) term-by-term *)
-(* ChristT=({Sgn[#],(* make sure the ordering of indices is correct *)SwapIndices[Which[
-Sgn[#]===1,ContractTensors[Christoffel[#,Subscript[\[Mu]TT, -],Subscript[\[Sigma], -],m](\[Tau]T/.#\[Rule]\[Sigma]^-)],
-Sgn[#]===-1,ContractTensors[Christoffel[\[Sigma]^-,Subscript[\[Mu]TT, -],#,m](\[Tau]T/.#\[Rule]Subscript[\[Sigma], -])]],
-		RemoveRepeatedUnderBarredIndices[{Subscript[\[Mu]TT, -],Sequence@@Indices[\[Tau]T]}]]}&/@indices); *)
-(* commented out code is a bit cryptic so let's do it slightly more directly? *)
-(* \!\(
-\*SubscriptBox[\(\[Del]\), \(\[Mu]\)]\ 
-\*SubscriptBox[
-SuperscriptBox[\(T\), \(\(\(...\)\(\ \)\(\[Alpha]\)\)\  ... \)], \(\(\(...\)\(\ \)\(\[Beta]\)\)\  ... \)]\) = ... + Subscript[\[CapitalGamma]^\[Alpha], \[Mu]\[Sigma]] Subscript[T^(... \[Sigma] ...), ... \[Beta] ...] - Subscript[\[CapitalGamma]^\[Sigma], \[Mu]\[Beta]] Subscript[T^(... \[Alpha] ...), ... \[Sigma] ...] *)
-(* old code
-\[Lambda]=Thread[{\[CapitalSigma],idx,idx+lgth-1}];
-ChristT=((Sgn[#] Which[
-Sgn[#]===1,Sum[Christoffel[#,Subscript[\[Mu]TT, -],Subscript[\[Sigma], -],m](\[Tau]T/.#\[Rule]\[Sigma]^-),{\[Sigma],idx,idx+lgth-1}],
-Sgn[#]===-1,Sum[Christoffel[\[Sigma]^-,Subscript[\[Mu]TT, -],#,m](\[Tau]T/.#\[Rule]Subscript[\[Sigma], -]),{\[Sigma],idx,idx+lgth-1}]])&/@indices);
-ChristT=Table[Plus@@(ChristT/.Thread[Rule[(#\[LeftDoubleBracket]1\[RightDoubleBracket]&/@indices),\[CapitalSigma]]]),{\[Mu]TT,idx,idx+lgth-1},Evaluate[(Sequence@@\[Lambda])]];
-*)
-(* new code May 2016 *)
 ChristT={};
 Do[
 ChristT=Append[ChristT,Sgn[indices[[\[Sigma]]]]Transpose[TensorContract[TensorProduct[\[CapitalGamma]M,TensorMatrix],{{Which[Sgn[indices[[\[Sigma]]]]==1,3,Sgn[indices[[\[Sigma]]]]==-1,1],3+\[Sigma]}}],Which[Sgn[indices[[\[Sigma]]]]==1,{\[Sigma]+1,1,Sequence@@Range[2,\[Sigma]],Sequence@@Range[\[Sigma]+2,Length[indices]+1]},Sgn[indices[[\[Sigma]]]]==-1,{1,\[Sigma]+1,Sequence@@Range[2,\[Sigma]],Sequence@@Range[\[Sigma]+2,Length[indices]+1]}]]],{\[Sigma],1,Length[indices]}];
 ChristT=Plus@@ChristT;
-(* ChristT=(#\[LeftDoubleBracket]1\[RightDoubleBracket]TensorComponents[#\[LeftDoubleBracket]2\[RightDoubleBracket]])&/@ChristT; *)
-(* combine the terms and sum them *)
-(* output=Prepend[ChristT,partialT];output=Plus@@output; *)
 output=partialT+ChristT;
 (* return Tensor by prepending Del-index \[Mu]T and Applying Del to TensorName and replacing TensorComponents *)
-\[Tau]T/.{
-(* We change the TensorType so that even the CovariantD of a Metric will be displayed properly *)
-(TensorType->ttt_)->(TensorType->"CovariantDerivative(s)"),
-(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
-(TensorName->nnn_):>(TensorName->Del[Cases[\[Tau]T,(TensorName->nn_)->nn,\[Infinity]][[1]]]),
+\[Tau]T/.{(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
+(TensorName->nnn_):>(TensorName->Del[TensorName[\[Tau]T]]),
 (TensorComponents->ccc_)->(TensorComponents->output)
 }
 ];
 (* Covariant derivative \[Del]^\[Mu]Tensor using the metric m *)
-CovariantD[\[Mu]T_/;CheckIndex[\[Mu]T],\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!ScalarTest[\[Tau]T])&&(* check m is a Metric *)(Cases[m,(TensorType->tt_)->tt]==={"Metric"})&&MatchQ[\[Mu]T,SuperMinus[_]]):=Module[{\[Sigma],\[Mu]TT,tempT},
+CovariantD[\[Mu]T_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T]&&!TestOverHatIndex[\[Mu]T]),\[Tau]T_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(!TestScalarTensor[\[Tau]T])&&(* check m is a Metric *)(TestMetricTensor[m])&&(*\[Del] on \[CapitalGamma] is not a correct definition.*)(*Do not allow CovariantD operator on a Christoffel*)(TensorTypeNoPart[\[Tau]T]=!={"ChristoffelSymbols"})&&MatchQ[\[Mu]T,SuperMinus[_]](*NewCode: \[Del]g=0*)&&(\[Tau]T=!=m)):=Module[{\[Sigma],\[Mu]TT,tempT},
 tempT=CovariantD[SubMinus[\[Sigma]],\[Tau]T,m];
 \[Tau]T/.{
-(* We change the TensorType so that even the CovariantD of a Metric will be displayed properly *)
-(TensorType->ttt_)->(TensorType->"CovariantDerivative(s)"),
 (Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
-(TensorName->nnn_):>(TensorName->Del[Cases[\[Tau]T,(TensorName->nn_)->nn,\[Infinity]][[1]]]),
+(TensorName->nnn_):>(TensorName->Del[TensorName[\[Tau]T]]),
 (TensorComponents->ccc_)->(TensorComponents->TensorContract[TensorProduct[TensorComponents[Metric[SuperMinus[\[Mu]TT],SuperMinus[\[Sigma]],m]],TensorComponents[tempT]],{{2,3}}])
 }
 ];
-
-
-(* ::Input::Initialization:: *)
-(* Thread over Plus automatically *)
-CovariantD/:CovariantD[\[Mu]T_,tt_,m_]:=(CovariantD[\[Mu]T,#,m]&/@tt)/;(Head[tt]===Plus); 
-(* Implement product rule *)
-CovariantD/:CovariantD[\[Mu]T_,tt_,m_]:=Module[{allTensors,therest},
-allTensors=Times@@Cases[(List@@tt),_Tensor];
-therest=Times@@DeleteCases[(List@@tt),_Tensor];
-therest CovariantD[\[Mu]T,allTensors,m]+allTensors Which[TensorIsZero[CovariantD[\[Mu]T,therest,m]],0,True,CovariantD[\[Mu]T,therest,m]]]/;(Head[tt]===Times)&&(Union[(Head/@(List@@tt))]=!={Tensor});
-(* Use ContractTensors to take care of TensorProduct's of Tensors *)
-CovariantD/:CovariantD[\[Mu]T_,tt_,m_]:=CovariantD[\[Mu]T,ContractTensors[tt],m]/;((Head[tt]===Times)&&(Union[(Head/@(List@@tt))]==={Tensor}));
+(*NewCode: \[Del]g=0*)
+CovariantD[\[Mu]T_/;TestIndices[\[Mu]T],m_Tensor,m_Tensor]/;((* We have already dealt with scalars *)(* check m is a Metric *)(TestMetricTensor[m])):=(*Utilize ZeroTensor in \[Del]g=0*)ZeroTensor[Join[{\[Mu]T},Indices[m]],TensorName->TensorName[m],Coordinates->Coordinates[m],StartIndex->StartIndex[m],TooltipDisplay->TooltipDisplay[m],TensorType->TensorType[m],TooltipStyle->TooltipStyle[m],TooltipStyle->TooltipStyle[m],TensorAssumption->TensorAssumption[m]];
 
 
 (* ::Input::Initialization:: *)
@@ -1303,11 +2801,10 @@ CovariantD/:CovariantD[\[Mu]T_,tt_,m_]:=CovariantD[\[Mu]T,ContractTensors[tt],m]
 (* = g^{-1/2} \[PartialD]_\[Mu] ( g^{1/2} g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] f ) *)
 (* = \[PartialD]_\[Mu] ( g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] f ) + (\[PartialD]_\[Mu] ln g^{1/2}) g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] f *)
 (* = \[PartialD]_\[Mu] ( g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] f ) + \[CapitalGamma]^\[Mu]_{\[Mu]\[Lambda]} g^{\[Lambda]\[Nu]} \[PartialD]_\[Nu] f *)
-CovariantBox[stuff_,m_Tensor]/;((Union[Cases[{stuff},Tensor[xx_],\[Infinity]]]==={})&&(Cases[m,(TensorType->tt_)->tt]==={"Metric"})):=Module[
+CovariantBox[stuff_,m_Tensor]/;((TestExpressionForm[stuff])&&(TestMetricTensor[m])):=Module[
 {coords,grad,\[Mu],\[Nu],\[Lambda],lgth,idx,ii},
 coords=Coordinates[m];lgth=Length[coords];
-(* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] stuff *)
 grad=Table[
 Sum[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]D[stuff,coords[[\[Nu]-idx+1]]],{\[Nu],idx,idx+lgth-1}],
@@ -1317,40 +2814,35 @@ Sum[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]D[stuff,coords[[\[Nu]-idx+1]]],
 Sum[D[grad[[\[Nu]-idx+1]],coords[[\[Nu]-idx+1]]]+Sum[Christoffel[SuperMinus[\[Mu]],SubMinus[\[Mu]],SubMinus[\[Nu]],m],{\[Mu],idx,idx+lgth-1}]grad[[\[Nu]-idx+1]],{\[Nu],idx,idx+lgth-1}]
 ];
 
-
-(* ::Input::Initialization:: *)
-(* Enter r = {x \[Rule] f1[x,y,z,...], y \[Rule] f2[x,y,z,...], z \[Rule] f3[x,y,z,...], ...} *)
-(* returns Union[r, {dx \[Rule] (\[PartialD]f1/\[PartialD]x)\[DifferentialD]x + (\[PartialD]f1/\[PartialD]y)\[DifferentialD]y + ..., dy \[Rule] (\[PartialD]f2/\[PartialD]x)\[DifferentialD]x + (\[PartialD]f2/\[PartialD]y)\[DifferentialD]y + ...} ] *)
-CoordinateTransformation[ct:{Repeated[Rule[_Symbol,_]]}]:=Module[
-{coords,rhs,jacob,i,j,ds},
-coords=#[[1]]&/@ct;rhs=#[[2]]&/@ct;
-(* dx \[Rule] (dx'/dx) dx *)
-jacob[i_]:=Sum[D[rhs[[i]],coords[[j]]]\[DifferentialD]coords[[j]],{j,1,Length[coords]}];
-ds=(\[DifferentialD]coords[[#]]->jacob[#])&/@Range[1,Length[coords]];
-Flatten[{ds,ct}]
-];
-(* Enter r = {x \[Rule] f1[x',y',z',...], y \[Rule] f2[x',y',z',...], z \[Rule] f3[x',y',z',...], ...} *)
-(* i.e. allow for different names on the RHS than the previous *)
-(* returns Union[r, {dx \[Rule] (\[PartialD]f1/\[PartialD]x')\[DifferentialD]x' + (\[PartialD]f1/\[PartialD]y')\[DifferentialD]y' + ..., dy \[Rule] (\[PartialD]f2/\[PartialD]x')\[DifferentialD]x' + (\[PartialD]f2/\[PartialD]y')\[DifferentialD]y' + ...} ] *)
-CoordinateTransformation[ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]}]:=Module[
-{coords,rhs,jacob,i,j,ds},
-(* extract coordinates and transformation rules *)
-coords=#[[1]]&/@ct;rhs=#[[2]]&/@ct;
-(* dx \[Rule] (dx_old'/dx_new) dx_new *)
-jacob[i_]:=Sum[D[rhs[[i]],newcoords[[j]]]\[DifferentialD]newcoords[[j]],{j,1,Length[newcoords]}];
-ds=(\[DifferentialD]coords[[#]]->jacob[#])&/@Range[1,Length[coords]];
-Flatten[{ds,ct}]
+(*CovariantBox on Tensor*)
+CovariantBox[t_Tensor,m_Tensor]/;(*m is a metric*)(TestMetricTensor[m])&&(*Coordinates should be the same.*)(Coordinates[t]===Coordinates[m]):=Module[
+{tempname,output,resumeindices,\[Mu]},
+(*Extract the TensorName*)
+tempname=TensorNameNoPart[t];
+(*Extract the Indices*)
+resumeindices=Indices[t];
+(*Operate \[Square]\[Congruent]\!\(\*
+StyleBox[
+SubscriptBox["\[Del]", "\[Mu]"],
+FontColor->RGBColor[1, 0, 1]]\(\*
+StyleBox[
+SuperscriptBox["\[Del]", "\[Mu]"],
+FontColor->RGBColor[1, 0, 1]]\ on\)\) t to get \[Square]t*)
+output=CovariantD[SubMinus[\[Mu]],CovariantD[SuperMinus[\[Mu]],t,m],m];
+Which[TestExpressionForm[output],output=t/.{(TensorComponents-> tc___)-> TensorComponents-> output}];
+(*Rename as \[Square]t and recover the original indices list*)
+output/.{(TensorName->name_)->(TensorName->Square@@tempname),(Indices->idx_)->(Indices->resumeindices)}
 ];
 
 
 (* ::Input::Initialization:: *)
 (* (\[Del]f)^2 for scalar function f *)
 (* this code is borrowed from CovariantBox *)
-GradientSquared[stuff_,m_Tensor]/;((Union[Cases[{stuff},Tensor[xx_],\[Infinity]]]==={})&&(Cases[m,(TensorType->tt_)->tt]==={"Metric"})):=Module[
+GradientSquared[stuff_,m_Tensor]/;((TestExpressionForm[stuff])&&(TestMetricTensor[m])):=Module[
 {coords,gradu,gradd,\[Mu],\[Nu],\[Lambda],lgth,idx,ii},
 coords=Coordinates[m];lgth=Length[coords];
 (* extract StartIndex *)
-idx=Flatten[Cases[m,(StartIndex->ii_)->ii,\[Infinity]]][[1]];
+idx=StartIndex[m];
 (* g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] stuff *)
 gradu=Table[
 Sum[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]D[stuff,coords[[\[Nu]-idx+1]]],{\[Nu],idx,idx+lgth-1}],
@@ -1359,88 +2851,1099 @@ Sum[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]D[stuff,coords[[\[Nu]-idx+1]]],
 (* \[PartialD]_\[Mu] stuff *)
 gradd=Table[D[stuff,coords[[\[Nu]-idx+1]]],{\[Nu],idx,idx+lgth-1}];
 (* \[PartialD]_\[Mu] stuff g^{\[Mu]\[Nu]} \[PartialD]_\[Nu] stuff = gradd.gradu *)
-gradu . gradd
+gradu.gradd
 ]
 
 
 (* ::Input::Initialization:: *)
-(* TensorIsZero returns True if every component of the input Tensor is zero and False otherwise *)
-TensorIsZero[stuff_Tensor]:=Which[
-(* non-scalar *)Head[TensorComponents[stuff]]===List,(Union[Flatten[TensorComponents[stuff]]]==={0}),
-True,((* scalar case *)TensorComponents[stuff]===0)];
+InteriorProduct[X_Tensor/;(RankNumber[X]>0),\[Omega]_Tensor]/;(RankNumber[\[Omega]]>0):=Module[{originalXindices,original\[Omega]indices,Xindices,\[Omega]indices,length,length2,finallength,newIndicesrep,newIndices,i,output,newTensorName},
+TestDifferentialForm[\[Omega]];
+TestDifferentialVector[X];
+originalXindices=Indices[X];
+original\[Omega]indices=Indices[\[Omega]];
+Xindices=RemoveUnderBarredIndices[originalXindices];
+\[Omega]indices=RemoveUnderBarredIndices[original\[Omega]indices];
+length=RankNumber[Xindices];
+length2=RankNumber[\[Omega]indices];
+finallength=Min[length,length2];
+newIndicesrep=Table[(Xindices[[i,1]]->\[Omega]indices[[i,1]] ),{i,1,finallength}];
+newIndices=originalXindices/.newIndicesrep;
+Which[((length===length2)),output=1/finallength! TensorsProduct[{Indices[X,newIndices],\[Omega]}],True,output=TensorsProduct[{Indices[X,newIndices],\[Omega]}];
+output=TensorsProduct[1/finallength! output,Tensor];
+output=TensorName[output,Row[{Subscript["\[Iota]", TensorName[X]],TensorName[\[Omega]]}]];
+output=RemoveRepeatedUnderBarredIndices[output]]
+];
+
+InteriorProduct[X_Tensor/;(RankNumber[X]>0),\[Omega]_Tensor,Tensor]/;(RankNumber[\[Omega]]>0):=Module[{originalXindices,original\[Omega]indices,Xindices,\[Omega]indices,length,length2,finallength,newIndicesrep,newIndices,i,output,newTensorName},
+TestDifferentialForm[\[Omega]];
+TestDifferentialVector[X];
+originalXindices=Indices[X];
+original\[Omega]indices=Indices[\[Omega]];
+Xindices=RemoveUnderBarredIndices[originalXindices];
+\[Omega]indices=RemoveUnderBarredIndices[original\[Omega]indices];
+length=RankNumber[Xindices];
+length2=RankNumber[\[Omega]indices];
+finallength=Min[length,length2];
+newIndicesrep=Table[(Xindices[[i,1]]->\[Omega]indices[[i,1]] ),{i,1,finallength}];
+newIndices=originalXindices/.newIndicesrep;
+output=TensorsProduct[{Indices[X,newIndices],\[Omega]},Tensor];
+output=TensorsProduct[1/finallength! output,Tensor];
+output=TensorName[output,Row[{Subscript["\[Iota]", TensorName[X]],TensorName[\[Omega]]}]];
+output=RemoveRepeatedUnderBarredIndices[output]
+];
+
+Subscript[Global`\[Iota],a_Tensor][b_Tensor]:=InteriorProduct[a,b]
 
 
 (* ::Input::Initialization:: *)
-LeviCivita[\[Nu]I__,m_Tensor]/;CheckMetricTensor[m]&&((* check space(time) dimensions *)Length[{\[Nu]I}]===Length[Coordinates[m]])&&(Union[CheckIndex/@{\[Nu]I}]==={True}):=Module[
-{mm,ss,\[Sigma],\[Sigma]1,\[Sigma]2,\[Mu],\[Nu],\[Alpha],\[Beta],\[Mu]1,\[Nu]1,\[Alpha]1,\[Beta]1,rl,si,s1,s2,\[CapitalSigma]1,\[CapitalSigma]2,cooo,disp,d,cc,LeviCivitaTemp,RL,gDD,gUU,K\[Delta]},
+(*Input a new specified index and tensor t*)
+ExteriorD[\[Mu]T_/;TestIndices[\[Mu]T],t_Tensor]/;(*index for PartialD should be lower one*)(Sgn[\[Mu]T]===-1):=Module[
+{dF,ddFm,\[Mu]Ttemp=SubMinus[Unique[\[Alpha]]]},
+TestDifferentialForm[t];
+(*PartialD on t*)
+dF=PartialD[\[Mu]Ttemp,t];
+(*Fully AntiSymmetrizeIndices dF*)
+ddFm=1/RankNumber[t]! TensorComponents[AntiSymmetrizeIndices[dF]];
+(*Add a \[DifferentialD] in the TensorName and change the TensorComponents. Prepend a new index.*)
+t/.{
+(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
+(TensorName->nnn_):>(TensorName->Row[{"\[DifferentialD]",TensorName[t]}]),
+(TensorComponents->ccc_)->(TensorComponents->ddFm)
+}
+];
+
+ExteriorD[\[Mu]T_/;TestIndices[\[Mu]T],t_Tensor,m_Tensor/;TestMetricTensor[m]]:=Module[
+{NewIndices,dFcomp,\[Alpha]},
+NewIndices=Prepend[RemoveUnderBarredIndices[Indices[t]],\[Mu]T];
+dFcomp=Which[(Union[Sgn[#]&/@NewIndices]==={-1}),
+1/RankNumber[t]! TensorComponents[AntiSymmetrizeIndices[PartialD[\[Mu]T,t]]],
+True,
+1/RankNumber[t]! TensorComponents[MoveIndices[AntiSymmetrizeIndices[PartialD[SubMinus[Unique[\[Alpha]]],LowerAllIndices[t,m]]],NewIndices,m]]];
+t/.{
+(Indices->iii_):>(Indices->Prepend[iii,\[Mu]T]),
+(TensorName->nnn_):>(TensorName->Row[{"\[DifferentialD]",TensorName[t]}]),
+(TensorComponents->ccc_)->(TensorComponents->dFcomp)
+}
+];
+
+(*Rename the whole bunch of indices.*)
+ExteriorD[\[Mu]List_List,t_Tensor]/;(*The length of \[Mu]List should be rank+1*)(Length[\[Mu]List]===RankNumber[t]+1)&&(*Also, we want to check all indices in \[Mu]List are OK and lower.*)MatchQ[(Union[TestIndices[#]&/@\[Mu]List]),{True}]&&(MatchQ[(Union[Sgn[#]&/@\[Mu]List]),{-1}])&&(*Check all indices in \[Mu]List are abstract.*)MatchQ[Union[NotAbstractIndex[#,Coordinates[t],Sequence@@StartIndexNoPart[t]]&/@\[Mu]List],{False}]:=(*Recall ExteriorD*)ExteriorD[(*Part 1 of \[Mu]List*)\[Mu]List[[1]],t/.(Indices->idx_)->(Indices->(*W/ Drop 1,we can get the new indices for t*)Drop[\[Mu]List,1])];
+
+(*Rename the whole bunch of indices.*)
+ExteriorD[\[Mu]List_List,t_Tensor,m_Tensor/;TestMetricTensor[m]]/;(*The length of \[Mu]List should be rank+1*)(Length[\[Mu]List]===RankNumber[t]+1)(*&&(*check t is a fully anti-symm tensor*)TestDifferentialForm[t]*)&&(*Also, we want to check all indices in \[Mu]List are OK and lower.*)MatchQ[(Union[TestIndices[#]&/@\[Mu]List]),{True}]&&(MatchQ[(Union[Sgn[#]&/@\[Mu]List]),{-1}]||MatchQ[(Union[Sgn[#]&/@\[Mu]List]),{1}])&&(*Check all indices in \[Mu]List are abstract.*)MatchQ[Union[NotAbstractIndex[#,Coordinates[t],Sequence@@StartIndexNoPart[t]]&/@\[Mu]List],{False}]:=(*Recall ExteriorD*)ExteriorD[(*Part 1 of \[Mu]List*)\[Mu]List[[1]],t/.(Indices->idx_)->(Indices->(*W/ Drop 1,we can get the new indices for t*)Drop[\[Mu]List,1]),m];
+
+(*ExteriorD w/o given a specified index.We will generate one Unique index for user.*)
+ExteriorD[t_Tensor](*/;(*check t is a fully anti-symm tensor*)TestDifferentialForm[t]*):=(*Recall ExteriorD*)ExteriorD[(*Generate unique index*)SubMinus[Unique[\[Mu]]],t];
+
+(*Shorthand for ExteriorD (\[DifferentialD]Tensor)*)
+Tensor/:\[DifferentialD]t_Tensor:=ExteriorD[t];
+
+(*Shorthand for ExteriorD w/ a new index for PartialD (\!\(
+\*SubscriptBox[\(\[DifferentialD]\), 
+SubscriptBox[\(\[Mu]T\), \(-\)]]Tensor\))*)
+Tensor/:Dt[t_Tensor,SubMinus[(\[Mu]T_Symbol|\[Mu]T_Integer)]]:=ExteriorD[SubMinus[\[Mu]T],t]
+
+(*Shorthand for ExteriorD w/ a new indices List for PartialD (\!\(
+\*SubscriptBox[\(\[DifferentialD]\), \({
+\*SubscriptBox[\(\[Mu]T\), \(-\)], 
+\*SubscriptBox[\(a1\), \(-\)], 
+\*SubscriptBox[\(a2\), \(-\)],  ... }\)]Tensor\))*)
+Tensor/:Dt[t_Tensor,list_List]:=ExteriorD[list,t];
+
+
+(* ::Input::Initialization:: *)
+PotentialForm[\[Alpha]_Tensor/;(!TestScalarTensor[\[Alpha]]),tensor___/;(({tensor}==={Tensor})||({tensor}==={})),opts:OptionsPattern[]]:=Module[{indices,t,rep,zup,p,\[Mu]T,\[Beta],tc,zp,zmzp,cood,i,tclist,tclist2,rep1,rep2},
+zp=OptionValue[StartingPoint];
+t=OptionValue[IntegrationVariable];
+cood=Coordinates[\[Alpha]];
+Which[(zp===Null),zp=TensorComponents[ZeroTensor[{SuperMinus[i]},Coordinates->cood]]];
+zmzp=cood-zp;
+TestDifferentialForm[\[Alpha]];
+indices=RemoveUnderBarredIndices[Indices[\[Alpha]]];
+rep=Thread[cood->(zp+((t #)&/@zmzp))];
+zup=NonMetricTensor[{SuperMinus[indices[[1,1]]]},zmzp,"z-z'",Coordinates->Coordinates[\[Alpha]]];
+p=RankNumber[\[Alpha]];
+\[Mu]T=TensorsProduct[(\[Alpha]/.(TensorComponents->mx_):>(TensorComponents->(mx/.rep))) zup];
+Which[((p===1)&&({tensor}=!={Tensor})),\[Beta]=Integrate[\[Mu]T,t];Which[(Quiet[Cases[{\[Beta]},Integrate[__],Infinity]]=!={}),\[Beta]=Inactivate[Replace[\[Beta],t->{t,0,1},{1}],Integrate],(Quiet[Cases[{\[Beta]},Integrate[__],Infinity]]==={}),\[Beta]=(\[Beta]/.t->1)-(\[Beta]/.t->0)],True,
+tc=Map[Integrate[t^(p-1) #,t]&,(TensorComponents[\[Mu]T]),{p-1}];
+Which[(Quiet[Cases[{tc},Integrate[__],Infinity]]=!={}),tc=Map[Integrate[t^(p-1) #,t]&,(TensorComponents[\[Mu]T]),{p-1}];
+tclist=Quiet[Cases[tc,Integrate[__],Infinity]];
+rep1=Thread[tclist->Inactivate[Replace[tclist,t->{t,0,1},{2}],Integrate]];tclist2=Quiet[DeleteCases[tc,Integrate[__],Infinity]];rep2=Thread[tclist2->((tclist2/.t->1)-(tclist2/.t->0))];tc=(tc/.Join[rep1,rep2]);,(Quiet[Cases[{tc},Integrate[__],Infinity]]==={}),tc=(tc/.t->1)-(tc/.t->0);];
+\[Beta]=TensorName[Indices[\[Alpha],RemoveUnderBarredIndices[Indices[\[Mu]T]]],OptionValue[TensorName]];
+\[Beta]=\[Beta]/.(TensorComponents->mx_)->(TensorComponents->tc)
+]
+]/;Which[(OptionValue[StartingPoint]===Null),True,(OptionValue[StartingPoint]=!=Null),(Dimensions[Coordinates[\[Alpha]]]===Dimensions[OptionValue[StartingPoint]])];
+
+
+(* ::Input::Initialization:: *)
+LeviCivita[\[Nu]I__,m_Tensor]/;TestMetricTensor[m]&&((* check space(time) dimensions *)Length[{\[Nu]I}]===Length[Coordinates[m]])&&(Union[TestIndices/@{\[Nu]I}]==={True}):=Module[
+{mm,\[Sigma],si,cooo,d,LeviCivitaTemp},
 cooo=Coordinates[m];
 d=Length[cooo];
-si=Cases[m,(StartIndex->cc_)->cc][[1]];
-(* prepare summation indices *)
-\[CapitalSigma]1=Unique[\[Sigma]1]&/@Range[1,d];s1={\[CapitalSigma]1[[#]],1,d}&/@Range[1,d];
-mm=Power[Abs[Determinant[m]],1/2]Table[Signature[\[CapitalSigma]1],Evaluate[Sequence@@s1]];
-disp="Volume form";
+si=StartIndex[m];
+mm=Power[Abs[Determinant[m]],1/2]LeviCivitaTensor[d];
 (* LeviCivita w/ lower indices *)
 LeviCivitaTemp=Tensor[
-TensorType->"VolumeForm",
 TensorName->OverTilde["\[Epsilon]"],
-CoordinateSystem->cooo,
+Coordinates->cooo,
 TensorComponents->mm,
 StartIndex->si,
 Indices->(SubMinus[Unique[\[Sigma]]]&/@{\[Nu]I}),
-TooltipDisplay->disp
+TooltipStyle-> TooltipStyle[m],
+TensorAssumption-> TensorAssumption[m],
+TensorOperator->TensorOperator[m]
 ];
 MoveIndices[LeviCivitaTemp,{\[Nu]I},m]
 ];
+
+LeviCivita[\[Nu]I__,m_Tensor,Minus]/;TestMetricTensor[m]&&((* check space(time) dimensions *)Length[{\[Nu]I}]===Length[Coordinates[m]])&&(Union[TestIndices/@{\[Nu]I}]==={True}):=(LeviCivita[\[Nu]I,m]/.(TensorComponents->mx_):>(TensorComponents->-mx));
 
 
 (* ::Input::Initialization:: *)
 (* Implement the covariant Hodge Dual of Tensor \[Tau] using the Metric m *)
 (* When # of Indices of \[Tau] is less than the # of dimensions *)
-CovariantHodgeDual[\[Nu]I__,\[Tau]_Tensor,m_Tensor]/;CheckMetricTensor[m]&&(Coordinates[\[Tau]]===Coordinates[m])&&(Union[CheckIndex/@{\[Nu]I}]==={True})&&(Length[{\[Nu]I}]===Simplify[Length[Coordinates[m]]-Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]]):=Module[
-{mm,LCT,\[Sigma],\[Sigma]1,\[Sigma]2,\[Mu],\[Nu],\[Alpha],\[Beta],\[Mu]1,\[Nu]1,\[Alpha]1,\[Beta]1,rl,s,si,s1,s2,\[CapitalSigma],\[CapitalSigma]1,\[CapitalSigma]2,cooo,disp,d,cc,LeviCivitaTemp,RL,gDD,gUU,K\[Delta]},
-(* strategy: construct appropriate LeviCivita and then contract it with the Tensor \[Tau] *)
-(* first construct dummy indices from the Indices of \[Tau] *)
-(* remember to removeunderbarred indices *)
-\[CapitalSigma]=Unique[\[Sigma]]&/@(#[[1]]&/@RemoveUnderBarredIndices[Indices[\[Tau]]]);
-(* Levi-Civita tensor with the indices \[Nu]I appended with all lower indices *)
-LCT=(TensorComponents[LeviCivita[\[Nu]I,(Sequence@@(SubMinus/@\[CapitalSigma])),m]]/Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]!);
-(* now tensor it with \[Tau] and then contract *)
-s=Length[{\[Nu]I}];
-LCT=TensorContract[TensorProduct[LCT,TensorComponents[RaiseAllIndices[\[Tau],m]]],Table[{s+si,s+si+Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]},{si,1,Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]}]];
-\[Tau]/.{(* replace name *)
-(TensorName->s1_):>(TensorName->Row[{"\[FivePointedStar]",s1}]),
-(* replace tensorcomponents *)
-(TensorComponents->s2_)->(TensorComponents->LCT),
-(* replace Indices *)
-(Indices->s2_)->(Indices->{\[Nu]I})
-}
-]/;((* make sure \[Tau] is fully antisymmetric *)TensorSymmetry[TensorComponents[\[Tau]]]===Antisymmetric[Range[1,Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]]]);
-(* When # of Indices of \[Tau] equal to # of dimensions *)
-CovariantHodgeDual[\[Tau]_Tensor,m_Tensor]/;CheckMetricTensor[m]&&(Coordinates[\[Tau]]===Coordinates[m])&&(Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]===Length[Coordinates[m]]):=Module[
-{mm,LCT,\[Sigma],\[Sigma]1,\[Sigma]2,\[Mu],\[Nu],\[Alpha],\[Beta],\[Mu]1,\[Nu]1,\[Alpha]1,\[Beta]1,rl,s,si,s1,s2,\[CapitalSigma],\[CapitalSigma]1,\[CapitalSigma]2,cooo,disp,d,cc,LeviCivitaTemp,RL,gDD,gUU,K\[Delta]},
-(* dimension *)
-d=Length[Coordinates[m]];
-(* strategy: construct appropriate LeviCivita and then contract it with the Tensor \[Tau] *)
-(* first construct dummy indices from the Indices of \[Tau] *)
-(* remember to removeunderbarred indices *)
-\[CapitalSigma]=Unique[\[Sigma]]&/@Range[1,d];
-(* Levi-Civita tensor with all lower indices *)
-LCT=(TensorComponents[LeviCivita[(Sequence@@(SubMinus/@\[CapitalSigma])),m]]/d!);
-(* now tensor it with \[Tau] and then contract *)
-LCT=TensorContract[TensorProduct[LCT,TensorComponents[RaiseAllIndices[\[Tau],m]]],Table[{si,d+si},{si,1,d}]];
-\[Tau]/.{(* replace name *)
-(TensorName->s1_):>(TensorName->Row[{"\[FivePointedStar]",s1}]),
-(* replace tensorcomponents *)
-(TensorComponents->s2_)->(TensorComponents->LCT),
-(* replace Indices *)
-(Indices->s2_)->(Indices->{})
-}
-]/;((* make sure \[Tau] is fully antisymmetric *)TensorSymmetry[TensorComponents[\[Tau]]]===Antisymmetric[Range[1,Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]]]);
+(*CovariantHodgeDual*)
+CovariantHodgeDual[\[Nu]I___,(\[Tau]_Tensor|(\[Tau]_/;TestExpressionForm[\[Tau]])),m_Tensor]/;TestMetricTensor[m]&&(Which[(Head[\[Tau]]===Tensor),Coordinates[\[Tau]]===Coordinates[m],True,True])&&((Union[TestIndices/@{\[Nu]I}]==={True})||(Union[TestIndices/@{\[Nu]I}]==={}))(*Not allow OverHatIndices for now.*)&&((Union[TestOverHatIndex/@{\[Nu]I}]==={False})||(Union[TestOverHatIndex/@{\[Nu]I}]==={}))&&(Length[{\[Nu]I}]===Length[Coordinates[m]]-Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]):=Module[
+{d,n,\[CapitalSigma],sF,\[Sigma],ii},
+d=CoordinatesDimension[m];
+n=RankNumber[\[Tau]];
+\[CapitalSigma]=Table[SubMinus[Unique[\[Sigma]]],{ii,1,(d-n)}];
+sF=NonMetricTensor[\[CapitalSigma],(-1)^(n (d-n)) Power[Abs[Determinant[m]],1/2] Which[n=!=0,HodgeDual[(RaiseAllIndices[\[Tau],m]//TensorComponents)],n===0,HodgeDual[(\[Tau]//TensorComponents),d]],Row[{"\[FivePointedStar]",TensorName[\[Tau]]}],Coordinates->Coordinates[m],StartIndex-> StartIndex[m],TooltipStyle-> TooltipStyle[m]];
+sF=MoveIndices[sF,{\[Nu]I},m];
+Which[TestScalarTensor[sF],TensorComponents[sF],True,sF]
+]
+
+CovariantHodgeDual[\[Nu]I___,(\[Tau]_Tensor|(\[Tau]_/;TestExpressionForm[\[Tau]])),m_Tensor,Tensor]/;TestMetricTensor[m]&&(Which[(Head[\[Tau]]===Tensor),Coordinates[\[Tau]]===Coordinates[m],True,True])&&((Union[TestIndices/@{\[Nu]I}]==={True})||(Union[TestIndices/@{\[Nu]I}]==={}))(*Not allow OverHatIndices for now.*)&&((Union[TestOverHatIndex/@{\[Nu]I}]==={False})||(Union[TestOverHatIndex/@{\[Nu]I}]==={}))&&(Length[{\[Nu]I}]===Length[Coordinates[m]]-Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]):=Module[
+{d,n,\[CapitalSigma],sF,\[Sigma],ii},
+d=CoordinatesDimension[m];
+n=RankNumber[\[Tau]];
+\[CapitalSigma]=Table[SubMinus[Unique[\[Sigma]]],{ii,1,(d-n)}];
+sF=NonMetricTensor[\[CapitalSigma],(-1)^(n (d-n)) Power[Abs[Determinant[m]],1/2] Which[n=!=0,HodgeDual[(RaiseAllIndices[\[Tau],m]//TensorComponents)],n===0,HodgeDual[(\[Tau]//TensorComponents),d]],Row[{"\[FivePointedStar]",TensorName[\[Tau]]}],Coordinates->Coordinates[m],StartIndex-> StartIndex[m],TooltipStyle-> TooltipStyle[m]];
+sF=MoveIndices[sF,{\[Nu]I},m]
+]
+
+(*CovariantHodgeDual: Automatically generate indices*)
+CovariantHodgeDual[(\[Tau]_Tensor|(\[Tau]_/;TestExpressionForm[\[Tau]])),m_Tensor]/;(TestMetricTensor[m]&&(Which[(Head[\[Tau]]===Tensor),Coordinates[\[Tau]]===Coordinates[m],True,True])&&(Length[Coordinates[m]]>Length[RemoveUnderBarredIndices[Indices[\[Tau]]]])):=Module[
+{\[Nu],l\[Nu]I,\[Nu]Ilist,i},
+l\[Nu]I=Simplify[Length[Coordinates[m]]-Length[RemoveUnderBarredIndices[Indices[\[Tau]]]]];
+\[Nu]Ilist=Which[(Indices[\[Tau]]==={}),Table[SubMinus[Unique[\[Nu]]],{i,1,l\[Nu]I}],True,Which[(Head[Indices[\[Tau]][[1]]]===SuperMinus),Table[SubMinus[Unique[\[Nu]]],{i,1,l\[Nu]I}],((!MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[\[Tau]]]]),{1}|{-1}])&&(Head[Indices[\[Tau]][[1]]]===SubMinus)),Table[SubMinus[Unique[\[Nu]]],{i,1,l\[Nu]I}],((MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[\[Tau]]]]),{1}|{-1}])&&(Head[Indices[\[Tau]][[1]]]===SubMinus)),Table[SuperMinus[Unique[\[Nu]]],{i,1,l\[Nu]I}]]];
+CovariantHodgeDual[Sequence@@\[Nu]Ilist,\[Tau],m]
+]
 
 
 (* ::Input::Initialization:: *)
-GeodesicSystem[m_Tensor,opts:OptionsPattern[]]/;CheckMetricTensor[m]:=Module[
+FullyAntiSymmetricTensorQ[t_Tensor/;(* mixed indices are not allowed in FullyAntiSymmetricTensorQ.*)(*All of them should be upper indices or lower indices.*)MatchQ[(Union[Sgn[#]&/@RemoveUnderBarredIndices[Indices[t]]]),{1}|{-1}]]:=(((*check t is a fully anti-symm tensor*)(TensorSymmetry[t][[1]]===Antisymmetric[Range[Length[RemoveUnderBarredIndices[Indices[t]]]]])&&(RankNumber[t]>1)))
+
+
+(* ::Input::Initialization:: *)
+LieD[\[Xi]_Tensor,m_Tensor,opts:OptionsPattern[]]/;(Quiet[TestMetricTensor[m]]&&(Dimensions[TensorComponents[\[Xi]]]==={Length[Coordinates[\[Xi]]]}==={Length[Coordinates[m]]})&&(StartIndex[\[Xi]]===StartIndex[m])&&((* either both upper or lower indices *)Times@@(Sgn[#]&/@Indices[m])===1)&&
+(TestOneVector[\[Xi]])):=Module[
+{Vec,\[Alpha],\[Mu],\[Nu],pd\[Xi],pdg,g\[Mu]\[Nu],g\[Mu]\[Nu]T,L1,L2,temp,idxl},
+(* make sure we have a vector *)
+Vec=RaiseAllIndices[\[Xi],m];
+(* make sure we lowered the indices on g *)
+g\[Mu]\[Nu]=Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],m];
+g\[Mu]\[Nu]T=TensorComponents[g\[Mu]\[Nu]];
+(* Construct Partial Derivative of \[Xi] *)
+pd\[Xi]=TensorComponents[PartialD[SubMinus[\[Mu]],Vec,m]];
+(* Construct Partial Derivative of Subscript[g, \[Mu]\[Nu]] *)
+pdg=TensorComponents[PartialD[SubMinus[\[Alpha]],g\[Mu]\[Nu],m]];
+(* \[Xi]^\[Sigma]\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
+\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) *)
+L1=TensorContract[TensorProduct[TensorComponents[Vec],pdg],{{1,2}}];
+(* \!\(
+\*SubscriptBox[\(\[PartialD]\), \({\[Mu]\)]
+\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)Subscript[g, \[Nu]}\[Sigma]] *)
+L2=TensorContract[TensorProduct[pd\[Xi],g\[Mu]\[Nu]T],{{2,4}}];
+(* ... remember to symmetrize *)
+L2=Transpose[L2]+L2;
+temp=m/.{(TensorName->tn_)->(TensorName->Row[{"\[Sterling]",Column[{Null,TensorName[\[Xi]]}],TensorName[m]}]),
+(TensorType->tn_)->(TensorType->"LieD"),
+(TensorComponents->mx_)->(TensorComponents->((L1+L2)//OptionValue[LieDerivativeOperator]))
+};
+Which[(OptionValue[TooltipDisplay]=!=Null),temp=TooltipDisplay[temp,OptionValue[TooltipDisplay]]];
+Which[(OptionValue[TooltipStyle]=!={}),temp=TooltipStyle[temp,OptionValue[TooltipStyle]]];
+Which[(OptionValue[Indices]=!=Null&&((Sgn[#]&/@OptionValue[Indices])===(Sgn[#]&/@Indices[m]))),temp=MoveIndices[temp,OptionValue[Indices],m],True,temp=MoveIndices[temp,Indices[m],m]]
+];
+
+(*LieD on General Tensor*)
+LieD[\[Xi]1_Tensor,t_Tensor,opts:OptionsPattern[]]/;(!Quiet[TestMetricTensor[t]]&&(Dimensions[TensorComponents[\[Xi]1]]==={Length[Coordinates[\[Xi]1]]}==={Length[Coordinates[t]]})&&(StartIndex[\[Xi]1]===StartIndex[t])&&(Cases[TensorTypeNoPart[t],(*We have already cover the Metric one and Christoffel is not a Tensor. Check if t is not "Metric" or "ChristoffelSymbols".*)("Metric"|"ChristoffelSymbols")]==={})&&(*Since user didn't input the metric, we only allow them to be vector (w/ upper index).*)
+(TestOneVector[\[Xi]1])):=Module[
+{\[Xi],name,cs,si,indices,rank,pdT,\[Sigma],pd\[Xi]\[Sigma]down,pd\[Xi]\[Sigma]up,Tpd\[Xi]\[Sigma]down,Tpd\[Xi]\[Sigma]up,LieDT,tempT,i,\[Gamma],output},
+(*Extract the TensorName*)
+name=TensorName[\[Xi]1];
+(*Extract the Coordinates*)
+cs=Coordinates[\[Xi]1];
+(*Extract the StartIndex*)
+si=StartIndex[\[Xi]1];
+(*Declare a function we can change the name of Killing vector's index.*)
+\[Xi][\[Gamma]_]:=NonMetricTensor[{\[Gamma]},TensorComponents[\[Xi]1],name,Coordinates->cs,StartIndex->si];
+(*Extract the Indices list of t*)
+indices=Indices[t];
+(*RankNumber*)
+rank=RankNumber[t];
+(*\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
+\*SubscriptBox[
+SuperscriptBox[\(T\), \(\(
+\*SubscriptBox[\(\[Mu]\), \(1\)] ... \)
+\*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(
+\*SubscriptBox[\(\[Nu]\), \(1\)] ... \)
+\*SubscriptBox[\(\[Nu]\), \(M\)]\)]\)*)
+pdT=PartialD[SubMinus[\[Sigma]],t];
+(*\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
+\*SuperscriptBox[\(\[Xi]\), \(\[Gamma]\)]\)*)
+pd\[Xi]\[Sigma]down=PartialD[SubMinus[\[Sigma]],\[Xi][SuperMinus[\[Gamma]]]];
+(*\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Gamma]\)]
+\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)*)
+pd\[Xi]\[Sigma]up=PartialD[SubMinus[\[Gamma]],\[Xi][SuperMinus[\[Sigma]]]];
+(*Subscript[T^(Subscript[\[Mu], 1]...Subscript[\[Mu], N]), Subscript[\[Nu], 1]...Subscript[\[Nu], M]]\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
+\*SuperscriptBox[\(\[Xi]\), \(\[Gamma]\)]\)*)
+Tpd\[Xi]\[Sigma]down=TensorsProduct[{t,pd\[Xi]\[Sigma]down}];
+(*Subscript[T^(Subscript[\[Mu], 1]...Subscript[\[Mu], N]), Subscript[\[Nu], 1]...Subscript[\[Nu], M]]\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Gamma]\)]
+\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)*)
+Tpd\[Xi]\[Sigma]up=TensorsProduct[{t,pd\[Xi]\[Sigma]up}];
+(*Sum the \[Xi]^\[Sigma]\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
+\*SubscriptBox[
+SuperscriptBox[\(T\), \(\(
+\*SubscriptBox[\(\[Mu]\), \(1\)] ... \)
+\*SubscriptBox[\(\[Mu]\), \(N\)]\)], \(\(
+\*SubscriptBox[\(\[Nu]\), \(1\)] ... \)
+\*SubscriptBox[\(\[Nu]\), \(M\)]\)]\) first.*)
+LieDT=(TensorsProduct[\[Xi][SuperMinus[\[Sigma]]] pdT]//TensorComponents);
+(*Sum the rest of terms.*)
+Do[Which[(*If i-th index of "T's" indices list is an upper index.*)Sgn[indices[[i]]]===1,
+(*replace the i-th index w/ \[Sigma] and replace \[Gamma] w/the i-th index*)tempT=Tpd\[Xi]\[Sigma]down/.{indices[[i,1]]->\[Sigma],\[Gamma]->indices[[i,1]]};
+(*Since we will operate TensorComponents at the end, we should make sure the indices order are consistent for every term.*)
+tempT=(SwapIndices[tempT,indices]//TensorComponents);
+(*For upper index, we should subtract it.*)
+LieDT=LieDT-tempT,(*If i-th index of "T's" indices list is an lower index.*)Sgn[indices[[i]]]===-1,tempT=Tpd\[Xi]\[Sigma]up/.{indices[[i,1]]->\[Sigma],\[Gamma]->indices[[i,1]]};
+tempT=(SwapIndices[tempT,indices]//TensorComponents);
+(*For upper index, we should do plus w/ it.*)LieDT=LieDT+tempT],(*Run through all the indices*){i,1,rank}];
+output=t/.{(TensorName->tn_)->(TensorName->Row[{"\[Sterling]",Column[{Null,TensorName[\[Xi]1]}],TensorName[t]}]),
+(TensorType->tn_)->(TensorType->"LieD"),(Indices->idx_)->(Indices->Which[(OptionValue[Indices]=!=Null&&((Sgn[#]&/@OptionValue[Indices])===(Sgn[#]&/@Indices[t]))),OptionValue[Indices],True,indices]),
+(TensorComponents->mx_)->(TensorComponents->(LieDT//OptionValue[LieDerivativeOperator]))
+};
+Which[(OptionValue[TooltipDisplay]=!=Null),output=TooltipDisplay[output,OptionValue[TooltipDisplay]]];
+Which[(OptionValue[TooltipStyle]=!={}),output=TooltipStyle[output,OptionValue[TooltipStyle]]];
+output
+];
+
+(*LieD for ExpressionForm*)
+LieD[\[Xi]1_Tensor/;(Dimensions[TensorComponents[\[Xi]1]]==={Length[Coordinates[\[Xi]1]]})&&(*Since user didn't input the metric, we only allow them to be vector (w/ upper index).*)MatchQ[Indices[\[Xi]1],{SuperMinus[_]}],stuff_/;TestExpressionForm[stuff],opts:OptionsPattern[]]:=LieD[\[Xi]1,NonMetricTensor[{},stuff,stuff,Coordinates->Coordinates[\[Xi]1],StartIndex->StartIndex[\[Xi]1]],opts]//TensorComponents;
+
+Subscript[Global`\[Sterling],a_Tensor][b_Tensor]:=LieD[a,b]
+
+
+(* ::Input::Initialization:: *)
+LieBracket[\[Xi]1_Tensor,\[Xi]2_Tensor,opts:OptionsPattern[]]/;(Dimensions[TensorComponents[\[Xi]1]]==={Length[Coordinates[\[Xi]1]]}==={Length[Coordinates[\[Xi]2]]})&&(StartIndex[\[Xi]1]===StartIndex[\[Xi]1])&&(*Since user didn't input the metric, we only allow them to be vector (w/ upper index).*)TestOneVector[\[Xi]1]&&TestOneVector[\[Xi]2]&&((Length[Cases[{opts},((LieBracketOperator|LieDerivativeOperator)->a_)->a]]===0)||(Length[Cases[{opts},((LieBracketOperator|LieDerivativeOperator)->a_)->a]]===1)):=Which[(Cases[{opts},(LieBracketOperator->a_)->LieBracketOperator]==={LieBracketOperator}),(Sequence@@List[\[Xi]1,\[Xi]2,Sequence@@({opts}/.{(LieBracketOperator->OptionValue[LieBracketOperator])->Nothing}),(LieDerivativeOperator->OptionValue[LieBracketOperator])])//LieD,True,(Sequence@@List[\[Xi]1,\[Xi]2,opts])//LieD]
+
+LieBracket[stuff1_/;TestExpressionForm[stuff1],stuff2_,opts:OptionsPattern[]]:=0;
+
+LieBracket[stuff1_,stuff2_/;TestExpressionForm[stuff2],opts:OptionsPattern[]]:=0;
+
+
+(* ::Input::Initialization:: *)
+(*JacobianComponents*)
+(*This piece is supposed to not include in the official version.*)
+JacobianComponents[ct:{Repeated[Rule[_Symbol,_]]}]:=Module[
+{coords,rhs,lgth,jacobcomp,jacobm,i,j,row,col},
+lgth=Length[ct];
+coords=#[[1]]&/@ct;rhs=#[[2]]&/@ct;
+jacobcomp[i_,j_]:=D[rhs[[i]](*index of \[Xi] should represent column*),coords[[j]](*index of x should represent row*)];
+jacobm=Table[jacobcomp[row,col],{row,1,lgth},{col,1,lgth}]
+];
+JacobianComponents[ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]}]:=Module[
+{coords,rhs,lgth,lgthrhs,jacobcomp,jacobm,i,j,row,col},
+lgth=Length[ct];
+lgthrhs=Length[newcoords];
+rhs=#[[2]]&/@ct;
+jacobcomp[i_,j_]:=D[rhs[[i]](*index of \[Xi] should represent column*),newcoords[[j]](*index of x should represent row*)];
+jacobm=Table[jacobcomp[row,col],{row,1,lgthrhs},{col,1,lgth}]
+];
+
+
+(* ::Input::Initialization:: *)
+(* Compute Jacobians for coordinate transformations *)
+(* Enter r = {x \[Rule] f1[x,y,z,...], y \[Rule] f2[x,y,z,...], z \[Rule] f3[x,y,z,...], ...} *)
+(* returns Union[r, {dx \[Rule] (\[PartialD]f1/\[PartialD]x)\[DifferentialD]x + (\[PartialD]f1/\[PartialD]y)\[DifferentialD]y + ..., dy \[Rule] (\[PartialD]f2/\[PartialD]x)\[DifferentialD]x + (\[PartialD]f2/\[PartialD]y)\[DifferentialD]y + ...} ] *)
+(*\[Del] transform*)
+CoordinateTransformation[ct:{Repeated[Rule[_Symbol,_]]}]:=Module[
+{coords,rhs,jacob,i,j,ds,R,lgth,dlist,drhs,dellist,delrhs,delR,jacobm,invjacobm},
+coords=#[[1]]&/@ct;rhs=#[[2]]&/@ct;
+(* dx \[Rule] (dx'/dx) dx *)
+jacob[i_]:=Sum[D[rhs[[i]],coords[[j]]]\[DifferentialD]coords[[j]],{j,1,Length[coords]}];
+ds=(\[DifferentialD]coords[[#]]->jacob[#])&/@Range[1,Length[coords]];
+R=Flatten[{ds,ct}];
+lgth=Length[ct];
+(*Extract coordinates*)
+coords=#[[1]]&/@ct;
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate Jacobian as d*d matrix form.*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,dlist[[b]]],{a,1,lgth},{b,1,lgth}];(*Generate inverse Jacobian as d*d matrix form.*)
+invjacobm=Transpose[Inverse[jacobm]]//Simplify;
+dellist=\[Del]coords[[#]]&/@Range[1,lgth];
+delR=Thread[dellist->invjacobm.dellist];
+Flatten[{R,delR}]
+];
+(* Enter r = {x \[Rule] f1[x',y',z',...], y \[Rule] f2[x',y',z',...], z \[Rule] f3[x',y',z',...], ...} *)
+(* i.e. allow for different names on the RHS than the previous *)
+(* returns Union[r, {dx \[Rule] (\[PartialD]f1/\[PartialD]x')\[DifferentialD]x' + (\[PartialD]f1/\[PartialD]y')\[DifferentialD]y' + ..., dy \[Rule] (\[PartialD]f2/\[PartialD]x')\[DifferentialD]x' + (\[PartialD]f2/\[PartialD]y')\[DifferentialD]y' + ...} ] *)
+(*\[Del] transform*)
+CoordinateTransformation[ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]}]:=Module[
+{coords,rhs,jacob,i,j,ds,R,lgth,lgthrhs,dlist,drhs,dellist,delrhs,delR,jacobm,invjacobm},
+(* extract coordinates and transformation rules *)
+coords=#[[1]]&/@ct;
+rhs=#[[2]]&/@ct;
+jacob[i_]:=Sum[D[rhs[[i]],newcoords[[j]]]\[DifferentialD]newcoords[[j]],{j,1,Length[newcoords]}];
+ds=(\[DifferentialD]coords[[#]]->jacob[#])&/@Range[1,Length[coords]];
+R=Flatten[{ds,ct}];
+lgth=Length[ct];
+lgthrhs=Length[newcoords];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced tensor.*)
+(*Generate inverse Jacobian as d*d matrix form.*)
+Which[(lgth===lgthrhs),
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*Generate Jacobian as d*d matrix form.*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{a,1,lgth},{b,1,lgthrhs}];invjacobm=Transpose[Inverse[jacobm]]//Simplify;
+dellist=\[Del]coords[[#]]&/@Range[1,lgth];
+delrhs=\[Del]newcoords[[#]]&/@Range[1,lgthrhs];
+delR=Thread[dellist->invjacobm.delrhs];
+Flatten[{R,delR}],(lgth=!=lgthrhs),R]
+];
+
+(*CoordinateTransformation to one with the same symbols (Other than Metric and Christoffel)*)
+CoordinateTransformation[t_Tensor/;Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={}(*Shouldn't be Metric or Christoffel*)
+,ct:{Repeated[Rule[_Symbol,_]]},OptionsPattern[]]/;((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]]):=Module[
+{coords,lgth,jacobm,invjacobm,jacobT,invjacobT,R,dlist,drhs,lgthrhs,indices,idxl, newm,name,si,m,mx,tensorproduct,allindices,j,s,l},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct];
+(*Generate Jacobian as d*d matrix form.*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,dlist[[b]]],{a,1,lgth},{b,1,lgth}];
+(*Generate inverse Jacobian as d*d matrix form.*)
+invjacobm=Transpose[Inverse[jacobm]];
+
+(*New tensor: Inherit property form old one.*)
+newm=t;
+
+(*Extract tensor components and perform it in new coord. We haven't contract with Jacobians yet.*)
+mx=TensorComponents[t]/.ct;
+
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. If current executed index is an upper index, contract with an inverse Jacobian. If it's a lower index, contract with a Jacobian.*)
+Do[
+Which[
+(*If it's upper index, and in coordinate basis*)Sgn[indices[[s]]]===1&&(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ inverse jacobian*)invjacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ inverse jacobian*)invjacobm],{{s,idxl+1}}]],
+(*If it's lower index, and in coordinate basis*)Sgn[indices[[s]]]===-1&&(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}]]
+],{s,1,idxl}];
+
+(*Determine the output TensorName*)
+name=Which[
+(*If OptionValue is an integer. That is, user didn't specified it.*)
+MatchQ[OptionValue[TensorName],_Integer],
+(*Inherit from old tensor.*)
+TensorName[t],
+(*If user specified it.*)
+True,
+(*Specify it to be OptionValue.*)
+OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[
+(*If OptionValue is "not" an integer. That is, user didn't specified it.*)
+!MatchQ[OptionValue[StartIndex],_Integer],
+(*Inherit from old tensor.*)
+StartIndex[t],
+(*If user specified it.*)
+True,
+(*Specify it to be OptionValue.*)
+OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName and StartIndex.*)
+newm=newm/.{(TensorComponents->m_)->(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si)
+};
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+Length[OptionValue[Indices]]===idxl,
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+newm=newm/.(Indices->idx_)->(Indices->indices);
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newm=Which[(TooltipDisplayNoPart[newm]==={}),Append[newm,TooltipDisplay->OptionValue[TooltipDisplay]],True,newm/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},newm=Which[(TooltipStyleNoPart[newm]==={}),Append[newm,TooltipStyle->OptionValue[TooltipStyle]],True,newm/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newm
+](*Check the OptionValue for indices list is OK. It's should be a list with same sign of original indices list or a null list*)/;(((Sgn[#]&/@OptionValue[Indices])===(Sgn[#]&/@Indices[t]))||(Sgn[#]&/@OptionValue[Indices]==={}));
+
+(*CoordinateTransformation to one with different symbols (Other than Metric and Christoffel)*)
+CoordinateTransformation[t_Tensor/;Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={}
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},OptionsPattern[]]/;(((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]])&&(Length[ct]===Length[newcoords])):=Module[
+{coords,lgth,jacobm,invjacobm,jacobT,invjacobT,R,dlist,drhs,lgthrhs,indices,idxl,newm,name,si,m,mx,tensorproduct,allindices,j,s,l},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*d matrix form.*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{a,1,lgth},{b,1,lgthrhs}];(*Generate inverse Jacobian as d*d matrix form.*)
+invjacobm=Transpose[Inverse[jacobm]];
+
+(*New tensor: Inherit property form old one.*)
+newm=t;
+
+(*Extract tensor components and perform it in new coord. We haven't contract with Jacobians yet.*)
+mx=TensorComponents[t]/.ct;
+
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. If current executed index is an upper index, contract with an inverse Jacobian. If it's a lower index, contract with a Jacobian.*)
+Do[
+Which[
+(*If it's upper index, and in coordinate basis*)Sgn[indices[[s]]]===1&&(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ inverse jacobian*)invjacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ inverse jacobian*)invjacobm],{{s,idxl+1}}]],
+(*If it's lower index, and in coordinate basis*)Sgn[indices[[s]]]===-1&&(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}]]
+],{s,1,idxl}];
+
+(*Determine the output TensorName*)
+name=Which[
+(*If OptionValue is an integer. That is, user didn't specified it.*)
+MatchQ[OptionValue[TensorName],_Integer],
+(*Inherit from old tensor.*)
+TensorName[t],
+(*If user specified it.*)
+True,
+(*Specify it to be OptionValue.*)
+OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[
+(*If OptionValue is "not" an integer. That is, user didn't specified it.*)
+!MatchQ[OptionValue[StartIndex],_Integer],
+(*Inherit from old tensor.*)
+StartIndex[t],
+(*If user specified it.*)
+True,
+(*Specify it to be OptionValue.*)
+OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName,  StartIndex and Coordinates.*)
+newm=newm/.{(TensorComponents->m_)->(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),(Coordinates->coords)->(Coordinates->newcoords)
+};
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+Length[OptionValue[Indices]]===idxl,
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+newm=newm/.(Indices->idx_)->(Indices->indices);
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newm=Which[(TooltipDisplayNoPart[newm]==={}),Append[newm,TooltipDisplay->OptionValue[TooltipDisplay]],True,newm/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},newm=Which[(TooltipStyleNoPart[newm]==={}),Append[newm,TooltipStyle->OptionValue[TooltipStyle]],True,newm/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newm
+](*Check the OptionValue for indices list is OK. It's should be a list with same sign of original indices list or a null list*)/;(((Sgn[#]&/@OptionValue[Indices])===(Sgn[#]&/@Indices[t]))||(Sgn[#]&/@OptionValue[Indices]==={}));
+
+
+(* ::Input::Initialization:: *)
+(* Coordinate transform a metric *)
+(* Enter r = {x \[Rule] f1[x,y,z,...], y \[Rule] f2[x,y,z,...], z \[Rule] f3[x,y,z,...], ...} *)
+CoordinateTransformation[mt_Tensor,ct:{Repeated[Rule[_Symbol,_]]},opts:OptionsPattern[]]/;(((* check Metric *)Quiet[TestMetricTensor[mt]])&&((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[mt]])(*No OverHat Indices*)&&(Cases[OverHatSgn[#]&/@Indices[mt],1]==={})):=Module[
+{coords,i,j,ds2,si,op,name,output,MetricOp,ChrOp,RiemOp,RicciOp,RicciSOp},
+(* extract coordinates *)
+coords=Coordinates[mt];
+(* extract StartIndex so we know what to sum over below *)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],(*NewCode: ExtractFunctions*)StartIndex[mt],True,OptionValue[StartIndex]];
+(* extract metric in the form of coordinate differentials *)
+ds2=ToExpressionForm[Metric[SubMinus[i],SubMinus[j],mt]];
+(* Apply CoordinateTransformation *)
+op=OptionValue[CoordinateTransformationOperator];
+MetricOp=Which[(OptionValue[MetricOperator]=!=Simplify),OptionValue[MetricOperator],True,op];
+ChrOp=Which[(OptionValue[ChristoffelOperator]=!=Simplify),OptionValue[ChristoffelOperator],True,op];
+RiemOp=Which[(OptionValue[RiemannOperator]=!=Simplify),OptionValue[RiemannOperator],True,op];
+RicciOp=Which[(OptionValue[RicciOperator]=!=Simplify),OptionValue[RicciOperator],True,op];
+RicciSOp=Which[(OptionValue[RicciScalarOperator]=!=Simplify),OptionValue[RicciScalarOperator],True,op];
+(*Change Name for Metric*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[mt],True,OptionValue[TensorName]];
+ds2=(ds2/.CoordinateTransformation[ct])//op;
+(* Re-compute Metric using new coordinates *)
+(* ensure the StartIndex and TensorName are brought over *)
+ds2=Metric[SubMinus[i],SubMinus[j],ds2,Coordinates->coords,StartIndex->si,TensorName->name,(*20251029 WH: Geometrical objects' Opertator*)MetricOperator->MetricOp,ChristoffelOperator->ChrOp,RiemannOperator->RiemOp,RicciOperator->RicciOp,RicciScalarOperator->RicciSOp];
+(* output with the same indices *)
+(*Change Indices for Metric*)
+(*Default OptionValue of Indices is {}, whose length is 0. If user input correctly, change it for them.*)
+output=Which[(Length[OptionValue[Indices]]===2),
+Metric[Sequence@@OptionValue[Indices],ds2,TooltipStyle-> TooltipStyle[mt]],True,Metric[Sequence@@Indices[mt],ds2,TooltipStyle-> TooltipStyle[mt]]];
+(*TooltipDisplay and TooltipStyle*)
+Which[(OptionValue[TooltipDisplay]=!=Null),output=TooltipDisplay[output,OptionValue[TooltipDisplay]]];
+Which[(OptionValue[TooltipStyle]=!={(*Small*)}),output=TooltipStyle[output,OptionValue[TooltipStyle]]];
+output
+];
+(* Enter r = {x \[Rule] f1[x',y',z',...], y \[Rule] f2[x',y',z',...], z \[Rule] f3[x',y',z',...], ...} *)
+(* i.e. allow for different names on the RHS than the previous *)
+CoordinateTransformation[mt_Tensor,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},opts:OptionsPattern[]]/;(((* check Metric *)Quiet[TestMetricTensor[mt]])&&((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[mt]])&&(Cases[OverHatSgn[#]&/@Indices[mt],1]==={})):=Module[
+{coords,i,j,ds2,si,op,name,output,MetricOp,ChrOp,RiemOp,RicciOp,RicciSOp},
+(* extract coordinates *)
+coords=Coordinates[mt];
+(* extract StartIndex so we know what to sum over below *)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],(*NewCode: ExtractFunctions*)StartIndex[mt],True,OptionValue[StartIndex]];
+(* extract metric in the form of coordinate differentials *)
+ds2=ToExpressionForm[Metric[SubMinus[i],SubMinus[j],mt]];
+(* Apply CoordinateTransformation *)
+op=OptionValue[CoordinateTransformationOperator];
+(*Geometrical objects' Opertator*)
+MetricOp=Which[(OptionValue[MetricOperator]=!=Simplify),OptionValue[MetricOperator],True,op];
+ChrOp=Which[(OptionValue[ChristoffelOperator]=!=Simplify),OptionValue[ChristoffelOperator],True,op];
+RiemOp=Which[(OptionValue[RiemannOperator]=!=Simplify),OptionValue[RiemannOperator],True,op];
+RicciOp=Which[(OptionValue[RicciOperator]=!=Simplify),OptionValue[RicciOperator],True,op];
+RicciSOp=Which[(OptionValue[RicciScalarOperator]=!=Simplify),OptionValue[RicciScalarOperator],True,op];
+(*Change Name for Metric*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[mt],True,OptionValue[TensorName]];
+ds2=(ds2/.CoordinateTransformation[ct,newcoords])//op;
+(* Re-compute Metric using new coordinates *)
+(* ensure new coordinates, StartIndex and TensorName are brought over *)
+ds2=Metric[SubMinus[i],SubMinus[j],ds2,Coordinates->newcoords,StartIndex->si,TensorName->name,(*20251029 WH: Geometrical objects' Opertator*)MetricOperator->MetricOp,ChristoffelOperator->ChrOp,RiemannOperator->RiemOp,RicciOperator->RicciOp,RicciScalarOperator->RicciSOp];
+(* output with the same indices *)
+(*Change Indices for Metric*)
+(*Default OptionValue of Indices is {}, whose length is 0. If user input correctly, change it for them.*)
+output=Which[Length[OptionValue[Indices]]===2,
+Metric[Sequence@@OptionValue[Indices],ds2,TooltipStyle-> TooltipStyle[mt]],True,Metric[Sequence@@Indices[mt],ds2,TooltipStyle-> TooltipStyle[mt]]];
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,output=Which[(TooltipDisplayNoPart[output]==={}),Append[output,TooltipDisplay->OptionValue[TooltipDisplay]],True,output/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},output=Which[(TooltipStyleNoPart[output]==={}),Append[output,TooltipStyle->OptionValue[TooltipStyle]],True,output/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+output
+];
+(*Induced Tensor: Check the dimensions.*)
+(*Induced Tensor (Other than Metric and Christoffel) without OverHat. Mixed Position.*)
+CoordinateTransformation[t_Tensor/;Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={}(*Shouldn't be Metric or Christoffel*)
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},AmbientSpaceMetric_Tensor/;TestMetricTensor[AmbientSpaceMetric],OptionsPattern[]]/;((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]])&&(Cases[OverHatSgn[#]&/@Indices[t],1]==={})&&(Length[ct]>Length[newcoords]):=Module[
+{coords,lgth,jacobm, R,dlist,drhs,lgthrhs,indices,idxl, newt,name,si,tensorproduct,allindices,hyperm,InvInducedT,tempidxlist,Q,W,m,mx,l,j,lowerindices},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced tensor.*)
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*n matrix form. n\[LessEqual]d*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{b,1,lgthrhs},{a,1,lgth}];
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+Length[OptionValue[Indices]]===idxl,
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+(*Lower all indices of tensor "t"*)
+newt=LowerAllIndices[t/.ct,AmbientSpaceMetric];
+
+(*prepare new matrix and indices*)
+mx=TensorComponents[newt];
+(*Since we have lower all indices, we should inherit the indices list but all w/ SubMinus*)
+allindices=SubMinus[#[[1]]]&/@indices;
+(*project into the hypersurface.*)
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. All indices are lower indices, so contract with Jacobians.*)
+Do[
+(*TensorProduct with a Jacobian*)
+mx=TensorProduct[mx,jacobm];
+(*Join Current indices list with Jacobians' indices.*)allindices=Join[(allindices//RemoveUnderBarredIndices),{SubMinus[Unique[j]],SuperMinus[indices[[l]][[1]]]}];
+(*Execute the contraction. The inner contraction will be taken care by code here: Search "Einstein summation: Repeated indices are summed over""*)
+newt=newt/.{(Indices->xxx_)->(Indices->allindices),
+(TensorComponents->xxxxx_)->(TensorComponents->mx)};
+(*extract the new tensor components*)
+mx=TensorComponents[newt];allindices=Indices[newt],{l,1,idxl}];
+
+(*generate induced inverse metric H^AB*)
+(*Recall Metric coordinate transformation code.*)
+InvInducedT=CoordinateTransformation[AmbientSpaceMetric,ct,newcoords,Indices->{SuperMinus[Q],SuperMinus[W]}];
+(*Recover/Raise those indices which lower at the beginning.*)
+newt=MoveIndices[newt,indices,InvInducedT]; 
+(*Determine the output TensorName*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[t],True,OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],StartIndex[t],True,OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName,  StartIndex and Coordinates.*)
+newt=newt/.{(TensorComponents->mx_):>(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),
+(Coordinates->xxxxxx_)->(Coordinates->newcoords),(Indices->idx_):> (Indices->(idx//RemoveRepeatedUnderBarredIndices))
+};
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newt=Which[(TooltipDisplayNoPart[newt]==={}),Append[newt,TooltipDisplay->OptionValue[TooltipDisplay]],True,newt/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},newt=Which[(TooltipStyleNoPart[newt]==={}),Append[newt,TooltipStyle->OptionValue[TooltipStyle]],True,newt/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newt
+];
+
+(*Induced Tensor (Other than Metric and Christoffel) with OverHat. Mixed Position.*)
+CoordinateTransformation[t_Tensor/;(Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={})(*Shouldn't be Metric or Christoffel*)
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},AmbientSpaceMetric_Tensor/;TestMetricTensor[AmbientSpaceMetric],OptionsPattern[]]/;((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]])&&!(Cases[OverHatSgn[#]&/@Indices[t],1]==={})&&(Length[ct]>Length[newcoords]):=Module[
+{coords,lgth,jacobm, R,dlist,drhs,lgthrhs,indices,idxl, newt,name,si,tensorproduct,allindices,hyperm,InvInducedT,tempidxlist,Q,W,m,mx,l,j,lowerindices},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced tensor.*)
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*n matrix form. n\[LessEqual]d*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{a,1,lgth},{b,1,lgthrhs}];
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+Length[OptionValue[Indices]]===idxl,
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+(*Lower all indices of tensor "t"*)
+allindices=Which[(OverHatSgn[#]===-1),SubMinus[#[[1]]],(OverHatSgn[#]===+1),#]&/@indices;
+newt=MoveIndices[t/.ct,allindices,AmbientSpaceMetric];
+
+(*prepare new matrix and indices*)
+mx=TensorComponents[newt];
+(*Since we have lower all indices, we should inherit the indices list but all w/ SubMinus*)
+
+(*project into the hypersurface.*)
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. If current executed index is an upper index, contract with an inverse Jacobian. If it's a lower index, contract with a Jacobian.*)
+Do[
+Which[
+(*If it's in coordinate basis*)(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}]]
+],{s,1,idxl}];
+
+(*generate induced inverse metric H^AB*)
+(*Recall Metric coordinate transformation code.*)
+InvInducedT=CoordinateTransformation[AmbientSpaceMetric,ct,newcoords,Indices->{SuperMinus[Q],SuperMinus[W]}];
+(*Recover/Raise those indices which lower at the beginning.*)
+newt=MoveIndices[newt/.(TensorComponents->mmm_)->(TensorComponents->mx),indices,InvInducedT]; 
+(*Determine the output TensorName*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[t],True,OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],StartIndex[t],True,OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName,  StartIndex and Coordinates.*)
+newt=newt/.{(TensorComponents->mx_):>(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),
+(Coordinates->xxxxxx_)->(Coordinates->newcoords),(Indices->idx_):> (Indices->(idx//RemoveRepeatedUnderBarredIndices))
+};
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newt=Which[(TooltipDisplayNoPart[newt]==={}),Append[newt,TooltipDisplay->OptionValue[TooltipDisplay]],True,newt/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},newt=Which[(TooltipStyleNoPart[newt]==={}),Append[newt,TooltipStyle->OptionValue[TooltipStyle]],True,newt/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newt
+];
+
+(*Induced Tensor with all lower indices*)
+(*Induced Tensor (Other than Metric and Christoffel) without OverHat. AllLowerIndices.*)
+CoordinateTransformation[t_Tensor/;Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={}(*Shouldn't be Metric or Christoffel*)
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},OptionsPattern[]]/;((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]])&&(Cases[OverHatSgn[#]&/@Indices[t],1]==={})&&(Length[ct]>Length[newcoords])&&(Union[Sgn[#]&/@Indices[t]]===({-1})||Union[Sgn[#]&/@Indices[t]]===({})):=Module[
+{coords,lgth,jacobm, R,dlist,drhs,lgthrhs,indices,idxl, newt,name,si,tensorproduct,allindices,hyperm,InvInducedT,tempidxlist,Q,W,m,mx,l,j,lowerindices},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced tensor.*)
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*n matrix form. n\[LessEqual]d*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{b,1,lgthrhs},{a,1,lgth}];
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+(Length[OptionValue[Indices]]===idxl)&&(Union[Sgn[#]&/@OptionValue[Indices]]===({-1})||Union[Sgn[#]&/@OptionValue[Indices]]===({})),
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+newt=t/.(TensorComponents->mxx_):>(TensorComponents->(mxx/.ct));
+
+(*prepare new matrix and indices*)
+mx=TensorComponents[newt];
+(*Since we have lower all indices, we should inherit the indices list but all w/ SubMinus*)
+allindices=indices;
+(*project into the hypersurface.*)
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. All indices are lower indices, so contract with Jacobians.*)
+Do[
+(*TensorProduct with a Jacobian*)
+mx=TensorProduct[mx,jacobm];
+(*Join Current indices list with Jacobians' indices.*)allindices=Join[(allindices//RemoveUnderBarredIndices),{SubMinus[Unique[j]],SuperMinus[indices[[l]][[1]]]}];
+(*Execute the contraction. The inner contraction will be taken care by code here: Search "Einstein summation: Repeated indices are summed over""*)
+newt=newt/.{(Indices->xxx_)->(Indices->allindices),
+(TensorComponents->xxxxx_)->(TensorComponents->mx)};
+(*extract the new tensor components*)
+mx=TensorComponents[newt];allindices=Indices[newt],{l,1,idxl}];
+(*Determine the output TensorName*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[t],True,OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],StartIndex[t],True,OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName,  StartIndex and Coordinates.*)
+newt=newt/.{(TensorComponents->mx_):>(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),
+(Coordinates->xxxxxx_)->(Coordinates->newcoords),(Indices->idx_)-> (Indices->indices)
+};
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newt=Which[(TooltipDisplayNoPart[newt]==={}),Append[newt,TooltipDisplay->OptionValue[TooltipDisplay]],True,newt/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={(*Small*)},newt=Which[(TooltipStyleNoPart[newt]==={}),Append[newt,TooltipStyle->OptionValue[TooltipStyle]],True,newt/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newt
+];
+
+(*Induced Tensor (Other than Metric and Christoffel) with OverHat. AllLowerIndices.*)
+CoordinateTransformation[t_Tensor/;(Cases[TensorTypeNoPart[t],("Metric"|"ChristoffelSymbols")]==={})(*Shouldn't be Metric or Christoffel*)
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},OptionsPattern[]]/;((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[t]])&&!(Cases[OverHatSgn[#]&/@Indices[t],1]==={})&&(Length[ct]>Length[newcoords])&&(Union[Sgn[#]&/@Indices[t]]===({-1})||Union[Sgn[#]&/@Indices[t]]===({})):=Module[
+{coords,lgth,jacobm, R,dlist,drhs,lgthrhs,indices,idxl, newt,name,si,tensorproduct,allindices,hyperm,InvInducedT,tempidxlist,Q,W,m,mx,l,j,lowerindices},
+indices=RemoveUnderBarredIndices[Indices[t]];
+(*Rank number: indices list's length*)
+idxl=Length[indices];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced tensor.*)
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[t];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*n matrix form. n\[LessEqual]d*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{a,1,lgth},{b,1,lgthrhs}];
+(*Determine the output Indices*)
+Which[
+(*Default value is a null list. Search: "Options[CoordinateTransformation]"
+User should input a list w/ its length equals to the rank of tensor.
+*)
+(*If user input a proper new indices list*)
+(Length[OptionValue[Indices]]===idxl)&&(Union[Sgn[#]&/@OptionValue[Indices]]===({-1})||Union[Sgn[#]&/@OptionValue[Indices]]===({})),
+(*Make it become OptionValue.*)
+indices=OptionValue[Indices]];
+(*Lower all indices of tensor "t"*)
+allindices=indices;
+newt=t/.(TensorComponents->mxx_):>(TensorComponents->(mxx/.ct));
+
+(*prepare new matrix and indices*)
+mx=TensorComponents[newt];
+(*Since we have lower all indices, we should inherit the indices list but all w/ SubMinus*)
+
+(*project into the hypersurface.*)
+(*"Do" for idxl(rank number) times: 
+Contract with Jacobians by hand. If current executed index is an upper index, contract with an inverse Jacobian. If it's a lower index, contract with a Jacobian.*)
+Do[
+Which[
+(*If it's in coordinate basis*)(OverHatSgn[indices[[s]]]===-1),
+mx=Which[
+s<idxl,Transpose[TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}],{Sequence@@Range[1,s-1],Sequence@@Range[s+1,idxl],s}],
+(*Least index doesn't need a Transpose.*)s===idxl,TensorContract[TensorProduct[mx,(*Contract w/ jacobian*)jacobm],{{s,idxl+1}}]]
+],{s,1,idxl}];
+(*Determine the output TensorName*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[t],True,OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],StartIndex[t],True,OptionValue[StartIndex]];
+(*Replace new Tensor with new TensorComponents, TensorName,  StartIndex and Coordinates.*)
+newt=newt/.{(TensorComponents->mx_):>(TensorComponents->mx//OptionValue[CoordinateTransformationOperator]),(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),
+(Coordinates->xxxxxx_)->(Coordinates->newcoords),(Indices->idx_)-> (Indices->(indices))
+};
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,newt=Which[(TooltipDisplayNoPart[newt]==={}),Append[newt,TooltipDisplay->OptionValue[TooltipDisplay]],True,newt/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={},newt=Which[(TooltipStyleNoPart[newt]==={}),Append[newt,TooltipStyle->OptionValue[TooltipStyle]],True,newt/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newt
+];
+
+(*CoordinateTransformation for Christoffel*)
+CoordinateTransformation[chr_Tensor/;Cases[TensorTypeNoPart[chr],"ChristoffelSymbols"]=!={}
+,ct:{Repeated[Rule[_Symbol,_]]},newcoords:{Repeated[_Symbol]},OptionsPattern[]]/;(((* check same coordinates *)Sort[#[[1]]&/@ct]===Sort[Coordinates[chr]])&&(RankNumber[chr]===3)(*No OverHat Indices*)&&(Cases[OverHatSgn[#]&/@Indices[chr],1]==={})(*nduced Christoffel is not allowed in this code.*)&&(Dimensions[Coordinates[chr]]===Dimensions[newcoords])):=Module[
+{coords,lgth,jacobm,jacobT,invjacobT,R,dlist,drhs,lgthrhs,indices,idxl,newchr,name,si,cps,grandom,DoubleD,Secondterm,kk,Firstterm,disp,i,j,k,l,hessian,invjacobm},
+(*Indices of input Christoffel*)
+indices=RemoveUnderBarredIndices[Indices[chr]];
+(*RankNumber: Christoffel is a rank-3 array.*)
+idxl=3;
+(*Determine the output Indices.*)
+Which[Length[OptionValue[Indices]]===idxl,
+indices=OptionValue[Indices]];
+(*Dimension: length of coordinates transformation list*)
+lgth=Length[ct];
+(*New Dimension: length of newcoords. Right now it's might be redundent. Since this piece of code do not cover induced Christoffel.*)
+lgthrhs=Length[newcoords];
+(*Extract old coordinates*)
+coords=Coordinates[chr];
+(*Generate a list with \[DifferentialD] in front of coordinates.*)
+dlist=\[DifferentialD]coords[[#]]&/@Range[1,lgth];
+(*Generate a list with \[DifferentialD] in front of newcoords.*)
+drhs=\[DifferentialD]newcoords[[#]]&/@Range[1,lgthrhs];
+(*R: Jacobian replacement rule list.*)
+R=CoordinateTransformation[ct,newcoords];
+(*Generate Jacobian as d*d matrix form.*)
+jacobm=Table[Coefficient[dlist[[a]]/.R,drhs[[b]]],{b,1,lgthrhs},{a,1,lgth}];
+(*Generate Jacobian as a Tensor object.*)
+jacobT=NonMetricTensor[{SubMinus[i],SuperMinus[k]},jacobm,"J",Coordinates->newcoords];
+(*Generate Hessian as a Tensor object by utilize "PartialD". Search "Derivative for Tensor".*)
+hessian=Table[D[jacobT,newcoords[[\[Sigma]]]],
+{\[Sigma],1,lgthrhs},Evaluate[Sequence@@({#,0,lgthrhs-1}&/@{i,k})]];
+(*Generate inverse Jacobian as d*d matrix form.*)
+invjacobm=Inverse[jacobm];
+(*Contract inverse Jacobian  and Hessian by hand.*)
+Secondterm=NonMetricTensor[{SubMinus[k],SuperMinus[l],SubMinus[j],SubMinus[i],SuperMinus[k]},TensorProduct[Sequence@@{invjacobm,hessian}],"S",Coordinates->newcoords];
+
+(*The first term is the one transform like a normal tensor.*)
+Firstterm=CoordinateTransformation[chr/.(TensorType->"ChristoffelSymbols")->(TensorType->Null),ct,newcoords,Indices->indices];
+(*Sum them up.*)
+cps=TensorComponents[Firstterm+Secondterm]//OptionValue[CoordinateTransformationOperator];
+(*Determine the output TensorName*)
+name=Which[MatchQ[OptionValue[TensorName],_Integer],TensorName[chr],True,OptionValue[TensorName]];
+(*Determine the output StartIndex*)
+si=Which[!MatchQ[OptionValue[StartIndex],_Integer],StartIndex[chr],True,OptionValue[StartIndex]];
+(*Determine the output TooltipDisplay*)
+disp=Flatten[Table[(Row[{"\[CapitalGamma]",Column[{newcoords[[\[Mu]s]],Null}],Column[{Null,newcoords[[\[Alpha]s]]}],Column[{Null,newcoords[[\[Beta]s]]}]}]->cps[[\[Mu]s,\[Alpha]s,\[Beta]s]]),{\[Mu]s,1,lgthrhs},{\[Alpha]s,1,lgthrhs},{\[Beta]s,1,lgthrhs}]];
+(*Only display nonzero components*)
+disp=Select[disp,(Flatten[Cases[{#},(Row[__]->cc_)->cc]][[1]]=!=0)&];
+(*Inherit old chr array and replace w/ new property.*)
+newchr=chr/.{(TensorName->tn_)->(TensorName->name),
+(StartIndex->st_)->(StartIndex->si),(TensorComponents->mx_)->(TensorComponents->cps), 
+(Coordinates->coords)->(Coordinates->newcoords),(Indices->idx_)->(Indices->indices),(TooltipDisplay->dp_)->(TooltipDisplay->disp)
+};
+(*TooltipDisplay and TooltipStyle*)
+Which[OptionValue[TooltipDisplay]=!=Null,Which[(TooltipDisplayNoPart[newchr]==={}),Append[newchr,TooltipDisplay->OptionValue[TooltipStyle]],True,newchr=newchr/.(TooltipDisplay->td_)->(TooltipDisplay->OptionValue[TooltipDisplay])]];
+Which[OptionValue[TooltipStyle]=!={},newchr=newchr/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])];
+Which[OptionValue[TooltipStyle]=!={},Which[(TooltipStyleNoPart[newchr]==={}),Append[newchr,TooltipStyle->OptionValue[TooltipStyle]],True,newchr=newchr/.(TooltipStyle->tts_)->(TooltipStyle->OptionValue[TooltipStyle])]];
+(*Final output*)
+newchr
+](*check if user input new indices list, they are proper. Or it should be default one (Null list).*)/;(((Sgn[#]&/@OptionValue[Indices])===(Sgn[#]&/@Indices[chr]))||(Sgn[#]&/@OptionValue[Indices]==={}));
+
+
+(* ::Input::Initialization:: *)
+ZeroTensor[indices_List,OptionsPattern[]]:=NonMetricTensor[indices,Normal[SymmetrizedArray[{},Table[Length[OptionValue[Coordinates]],{j,1,RankNumber[indices]}],ZeroSymmetric[All]]],OptionValue[TensorName],Coordinates->OptionValue[Coordinates],StartIndex->OptionValue[StartIndex],TooltipDisplay->OptionValue[TooltipDisplay],TensorType->OptionValue[TensorType],TooltipStyle->OptionValue[TooltipStyle],TensorAssumption->OptionValue[TensorAssumption]]
+
+
+(* ::Input::Initialization:: *)
+(* ZeroTensorQ returns True if every component of the input Tensor is zero and False otherwise *)
+ZeroTensorQ[(stuff_Tensor|stuff_Times|stuff_Plus)/;!TestExpressionForm[stuff],opts:OptionsPattern[]]:=Module[{stuffop,stuffopTorF,TIZop,TIZopTorF,tensorcomp=Normal[TensorComponents[stuff]]},
+(*stuff's TensorOperator*)
+stuffop=TensorOperator[Cases[{stuff},Tensor[___],Infinity][[1]]];
+(*stuff's TensorOperator is Simplify or not Simplify. True for not Simplify. False for Simplify*)
+stuffopTorF=Which[(stuffop=!=Simplify),True,True,False];
+TIZop=OptionValue[ZeroTensorQOperator];
+(*stuff's TensorOperator is Simplify or not Simplify. True for not Simplify. False for Simplify*)
+TIZopTorF=Which[(TIZop=!=Simplify),True,True,False];
+Which[
+(* non-scalar *)(Head[tensorcomp]===List),(Which[(TIZopTorF===True),
+Union[(Flatten[tensorcomp]//TIZop)],
+(TIZopTorF===False),
+Which[(stuffopTorF===True),
+Union[(Flatten[tensorcomp]//stuffop)],
+(stuffopTorF===False),
+Union[Simplify[Flatten[tensorcomp]]]
+]
+]==={0}),
+True,((* scalar case *)Which[(TIZopTorF===True),
+Simplify[tensorcomp,TIZop],
+(TIZopTorF===False),
+Which[(stuffopTorF===True),
+(tensorcomp//stuffop),
+(stuffopTorF===False),
+Simplify[tensorcomp]
+]
+]===0)]
+];
+
+(*ZeroTensorQ for List*)
+(*Now we allow it to input a List*)
+ZeroTensorQ[stuff_List,opts:OptionsPattern[]]:=
+(Union[(Flatten[stuff]//OptionValue[ZeroTensorQOperator])]==={0});
+
+(*ZeroTensorQ for ExpressionForm*)
+ZeroTensorQ[stuff_/;TestExpressionForm[stuff],opts:OptionsPattern[]]:=((stuff//OptionValue[ZeroTensorQOperator])===0);
+
+
+(* ::Input::Initialization:: *)
+(*TensorEquations*)
+TensorEquations[(t_Tensor|t_Times|t_Plus|t_NonCommutativeMultiply),0]/;(*If head is Times or Plus, there should be Tensor inside it*)(!TestExpressionForm[t]):=Module[{comp=Normal[TensorComponents[t]]},(*DeleteDuplicates*)Which[(Head[comp]=!=List),(comp==0),(Head[comp]===List),DeleteDuplicates[(#==0)&/@Flatten[comp]]/.(*Remove redundent True result.*)True->Nothing]];
+
+(*TensorEquations Table algorithm*)
+TensorEquations[(LHSt_Tensor|LHSt_Times|LHSt_Plus|LHSt_NonCommutativeMultiply),(RHSt_Tensor|RHSt_Times|RHSt_Plus|RHSt_NonCommutativeMultiply),opts:OptionsPattern[]]/;(!TestExpressionForm[LHSt])&&(!TestExpressionForm[RHSt]):=Module[{indicesFlatten,indicesDeleteDuplicates,indices,idx,IndicesRange,Eqns,LHStContract,RHStContract,IndicesCoordSi,IndicesCoordSiLength,dimRep,SiRep,outputform},
+outputform=OptionValue[OutputForm];
+LHStContract=ContractTensors[LHSt];
+RHStContract=ContractTensors[RHSt];
+indicesFlatten=RemoveUnderBarredIndices[Flatten[Cases[{LHStContract},(Indices->idx_)->idx,Infinity]]];
+indicesDeleteDuplicates=DeleteDuplicates[#&/@indicesFlatten];
+indices=#[[1]]&/@indicesDeleteDuplicates;
+IndicesCoordSi=Union[Cases[{LHStContract},Tensor[(Indices->idx_),(Coordinates->coods_),(StartIndex->si_),___]->{idx,coods,si},Infinity]];
+IndicesCoordSiLength=Length[IndicesCoordSi];
+dimRep=Flatten[Table[(#->Length[IndicesCoordSi[[ii,2]]])&/@IndicesCoordSi[[ii,1,All,1]],{ii,1,IndicesCoordSiLength}]];
+SiRep=Flatten[Table[(#->IndicesCoordSi[[ii,3]])&/@IndicesCoordSi[[ii,1,All,1]],{ii,1,IndicesCoordSiLength}]];
+IndicesRange={#,(#/.SiRep),(#/.dimRep)+(#/.SiRep)-1}&/@indices;
+Eqns=Table[LHStContract==RHStContract,Evaluate[Sequence@@IndicesRange]];
+Eqns=Eqns/.NonCommutativeMultiply->Times;
+(*20251127 WH: OutputForms for TensorEquations*)
+Which[(outputform===BooleanQ),If[(Union[Flatten[Eqns]]==={True}),True,False],(outputform===Flatten),DeleteDuplicates[Flatten[Eqns]],(outputform===Tensor),Indices[TensorName[ExtractTheFirstTensor[LHSt]/.(TensorComponents->tc_)->(TensorComponents->Eqns),(Row[{TensorName[LHSt],"==",TensorName[RHSt]}])],indicesDeleteDuplicates],True,{indicesDeleteDuplicates,Eqns}]
+];
+
+TensorEquations[LHSt_,RHSt_]/;(TestExpressionForm[LHSt])&&(TestExpressionForm[RHSt]):=(LHSt==RHSt)
+
+(*TensorEquations For Equal*)
+TensorEquations[tEq_Equal,opts:OptionsPattern[]]:=TensorEquations[tEq[[1]],tEq[[2]],OutputForm->OptionValue[OutputForm]]
+
+(*TensorEquations for List*)
+TensorEquations[tEqList_List,opts:OptionsPattern[]]:=Which[(OptionValue[OutputForm]===List),(TensorEquations[#,OutputForm->List]&/@tEqList),(OptionValue[OutputForm]===Flatten),DeleteDuplicates[Flatten[(TensorEquations[#,OutputForm->Flatten]&/@tEqList)]],(OptionValue[OutputForm]===Tensor),TensorEquations[#,OutputForm->Tensor]&/@tEqList,(OptionValue[OutputForm]===BooleanQ),(Union[TensorEquations[#,OutputForm->BooleanQ]&/@tEqList]==={True})]
+
+
+(* ::Input::Initialization:: *)
+(*TensorDivision*)
+(*Adjust the output of TensorDivision.*)
+TensorDivision[(*LHS is numerator.*)(LHSt_Tensor|LHSt_Times|LHSt_Plus),(*RHS is denominator.*)(RHSt_Tensor|RHSt_Times|RHSt_Plus),opts:OptionsPattern[]]/;(!TestExpressionForm[LHSt])&&(!TestExpressionForm[RHSt]):=Module[{stuffop,stuffopTorF,TDop,TDopTorF,op,LHScomp,RHScomp,NonTrivialcompN,EquilityList,\[Kappa],solnst,solns,solnsFlatten,solnsUnion,soln,LHSttemp=LHSt,RHSttemp=RHSt,rank=RankNumber[LHSt]},
+Which[((Head[LHSt]===Times)||(Head[LHSt]===Plus)),LHSttemp=TensorsProduct[LHSt, Tensor]];
+Which[((Head[RHSt]===Times)||(Head[RHSt]===Plus)),RHSttemp=TensorsProduct[RHSt, Tensor]];
+(*stuff's TensorOperator*)
+stuffop=TensorOperator[LHSttemp];
+(*stuff's TensorOperator is Simplify or not Simplify. True for not Simplify. False for Simplify*)
+stuffopTorF=Which[(stuffop=!=Simplify),True,True,False];
+TDop=OptionValue[TensorDivisionOperator];
+(*stuff's TensorOperator is Simplify or not Simplify. True for not Simplify. False for Simplify*)
+TDopTorF=Which[(TDop=!=Simplify),True,True,False];
+op=Which[TDopTorF,TDop,stuffopTorF,stuffop,True,TDop];
+LHScomp=LHSttemp//TensorComponents//op;
+RHScomp=RHSttemp//TensorComponents//op;
+Which[(ComponentRankNumber[LHScomp]=!=0),
+NonTrivialcompN=Length[(Flatten[LHScomp])/.{0->Nothing}];
+EquilityList=MapThread[Equal,{LHScomp,\[Kappa] RHScomp},rank];
+solnst=Map[Solve[#,\[Kappa]]&,EquilityList,{rank}];
+solns=solnst//op;
+solnsFlatten=(Flatten[solns/.({{}}->{{ "\!\(\*FractionBox[\(0\), \(0\)]\)"}}),{1,rank+2}])/.{{}->\[Infinity],{\[Kappa]->soln___}:> soln};
+solnsUnion=((solnsFlatten//Flatten)//Union)/."\!\(\*FractionBox[\(0\), \(0\)]\)"-> Nothing;
+Which[((Length[((solnsFlatten//Flatten)/."\!\(\*FractionBox[\(0\), \(0\)]\)"-> Nothing)]===NonTrivialcompN)&&(Length[solnsUnion]===1)),solnsUnion[[1]],True,LHSt/.{(TensorComponents->mx_)-> (TensorComponents->(solnsFlatten/.{"\!\(\*FractionBox[\(0\), \(0\)]\)"}->"\!\(\*FractionBox[\(0\), \(0\)]\)")),(TensorName->tn_)->(TensorName->TensorName[LHSttemp]/TensorName[RHSttemp])}],
+(ComponentRankNumber[LHScomp]===0),(Solve[LHScomp==\[Kappa] RHScomp,\[Kappa]]/.{{{\[Kappa]->soln___}}:> (soln//op)})
+]
+];
+
+
+(* ::Input::Initialization:: *)
+(*Geodesic equations*)
+GeodesicSystem[m_Tensor,opts:OptionsPattern[]]/;TestMetricTensor[m]:=Module[
+{mm,ss,\[Sigma],\[Mu],\[Nu],si,cooo,d,cc,coo\[Lambda],coot,a\[Lambda],ct,comehere,L\[Lambda],Lt,output,xdot\[Lambda],xdotdot\[Lambda],xdot\[Lambda]a,a,b,xdot\[Lambda]b,i,Chr\[Lambda],Chrxdotxdot\[Lambda],xdott,xdotdott,xdotta,xdottb,Chrt,Chrxdotxdott,GeodesicEqs\[Lambda]LHS,GeodesicEqs\[Lambda],GeodesicEqstLHS,GeodesicEqstRHS,GeodesicEqst,tpos},
+(* extract affine and non-affine parameter for solving geodesic eqn *)
+a\[Lambda]=OptionValue[AffineParameter];
+cooo=Coordinates[m];
+(* non-affine parameter *)
+ct=Intersection[{OptionValue[NonAffineParameter]},cooo];
+Which[
+(* if input NonAffineParameter is one of the coordinates *)
+Length[ct]===1,
+coot=Which[#===ct[[1]],ct[[1]],#=!=ct[[1]],#/.#->#[ct[[1]]]]&/@cooo,
+(* if input NonAffineParameter is not one of the coordinates *)
+ct==={},
+coot=(#/.#->#[OptionValue[NonAffineParameter]])&/@cooo];
+ct=OptionValue[NonAffineParameter];
+(* coordinates as a function of affine parameter *)
+coo\[Lambda]=(#/.#->#[a\[Lambda]])&/@cooo;
+d=Length[cooo];
+xdot\[Lambda]=D[coo\[Lambda],a\[Lambda]];
+xdotdot\[Lambda]=D[xdot\[Lambda],a\[Lambda]];
+xdot\[Lambda]a=NonMetricTensor[{SuperMinus[a]},xdot\[Lambda],"\!\(\*OverscriptBox[\(x\), \(.\)]\)",Coordinates->coo\[Lambda],StartIndex->StartIndex[m]];
+xdot\[Lambda]b=(xdot\[Lambda]a/.{a->b});
+Chr\[Lambda]=Christoffel[SuperMinus[i],SubMinus[a],SubMinus[b],m]/.Thread[Rule[cooo,coo\[Lambda]]];
+Chrxdotxdot\[Lambda]=TensorsProduct[Chr\[Lambda] xdot\[Lambda]a xdot\[Lambda]b];
+GeodesicEqs\[Lambda]LHS=xdotdot\[Lambda]+TensorComponents[Chrxdotxdot\[Lambda]];
+GeodesicEqs\[Lambda]=(#==0)&/@GeodesicEqs\[Lambda]LHS;
+xdott=D[coot,ct];
+xdotdott=D[xdott,ct];
+xdotta=NonMetricTensor[{SuperMinus[a]},xdott,"\!\(\*OverscriptBox[\(x\), \(.\)]\)",Coordinates->coot,StartIndex->StartIndex[m]];
+xdottb=(xdotta/.{a->b});
+Chrt=Christoffel[SuperMinus[i],SubMinus[a],SubMinus[b],m]/.Thread[Rule[cooo,coot]];
+Chrxdotxdott=TensorsProduct[Chrt xdotta xdottb];
+(* construct affine parameter Lagrangian *)
+L\[Lambda]=TensorComponents[Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],m]]/.Thread[Rule[cooo,coo\[Lambda]]];
+L\[Lambda]=(1/2)Sum[L\[Lambda][[\[Mu],\[Nu]]]D[coo\[Lambda],a\[Lambda]][[\[Mu]]]D[coo\[Lambda],a\[Lambda]][[\[Nu]]],{\[Mu],1,d},{\[Nu],1,d}];
+(* construct non-affine parameter Lagrangian *)
+Lt=TensorComponents[Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],m]]/.Thread[Rule[cooo,coot]];
+Lt=Power[Abs[Sum[Lt[[\[Mu],\[Nu]]]D[coot,ct][[\[Mu]]]D[coot,ct][[\[Nu]]],{\[Mu],1,d},{\[Nu],1,d}]],1/2];
+GeodesicEqstLHS=xdotdott+TensorComponents[Chrxdotxdott];
+GeodesicEqstRHS=TensorComponents[xdotta]D[Log[Lt],ct];
+GeodesicEqst=Thread[(GeodesicEqstLHS==GeodesicEqstRHS)];
+Which[((tpos=Position[coot,ct,{1}])=!={}),GeodesicEqst=Drop[GeodesicEqst,tpos[[1]]]];
+(* output: 
+(1) Lag in affine parameter form, (2) Lag in non-affine parameter form;
+(3) Geodesic Equations in affine parameter form;
+(4) Geodesic Equations in non-affine parameter form *)
+{L\[Lambda],Lt,GeodesicEqs\[Lambda],GeodesicEqst}
+]/;((Head[OptionValue[AffineParameter]]===Symbol)&&(Head[OptionValue[NonAffineParameter]]===Symbol));
+
+GeodesicSystemVariationalMethods[m_Tensor,opts:OptionsPattern[]]/;TestMetricTensor[m]:=Module[
 {mm,ss,\[Sigma],\[Mu],\[Nu],si,cooo,d,cc,coo\[Lambda],coot,a\[Lambda],ct,comehere,L\[Lambda],Lt,output},
 (* extract affine and non-affine parameter for solving geodesic eqn *)
 a\[Lambda]=OptionValue[AffineParameter];
@@ -1473,7 +3976,7 @@ Lt=Power[Sum[Lt[[\[Mu],\[Nu]]]D[coot,ct][[\[Mu]]]D[coot,ct][[\[Nu]]],{\[Mu],1,d}
 
 
 (* ::Input::Initialization:: *)
-GeodesicLagrangians[m_Tensor,opts:OptionsPattern[]]/;CheckMetricTensor[m]:=Module[
+GeodesicLagrangians[m_Tensor,opts:OptionsPattern[]]/;TestMetricTensor[m]:=Module[
 {mm,ss,\[Sigma],\[Mu],\[Nu],si,cooo,d,cc,coo\[Lambda],coot,a\[Lambda],ct,comehere,L\[Lambda],Lt,output},
 (* extract affine and non-affine parameter for solving geodesic eqn *)
 a\[Lambda]=OptionValue[AffineParameter];
@@ -1504,53 +4007,103 @@ Lt=Power[Sum[Lt[[\[Mu],\[Nu]]]D[coot,ct][[\[Mu]]]D[coot,ct][[\[Nu]]],{\[Mu],1,d}
 
 
 (* ::Input::Initialization:: *)
-ToTensor[exp_,indices_List,components_List,coords_List,opts:OptionsPattern[]]:=Module[
-{ttype,si},
-ttype=OptionValue[TensorType];
-si=OptionValue[StartIndex];
-Tensor[TensorType->ttype,TensorName->exp,Indices->indices,StartIndex->si,CoordinateSystem->coords,TensorComponents->components]
-]/;IntegerQ[OptionValue[StartIndex]]&&(Length[Union[Dimensions[components]]]===1)&&(Length[indices]===Length[Dimensions[components]]);
-
-
-(* ::Input::Initialization:: *)
-LieDerivative[\[Xi]_Tensor,m_Tensor]/;CheckMetricTensor[m]&&(Dimensions[TensorComponents[\[Xi]]]==={Length[Coordinates[\[Xi]]]}==={Length[Coordinates[m]]})&&(Cases[\[Xi],(StartIndex->mmm_):>mmm,\[Infinity]][[1]]===Cases[m,(StartIndex->mmm_):>mmm,\[Infinity]][[1]])&&((* either both upper or lower indices *)Times@@(Sgn[#]&/@Indices[m])===1):=Module[
-{Vec,\[Alpha],\[Mu],\[Nu],pd\[Xi],pdg,g\[Mu]\[Nu],g\[Mu]\[Nu]T,L1,L2,temp},
-(* make sure we have a vector *)
-Vec=RaiseAllIndices[\[Xi],m];
-(* make sure we lowered the indices on g *)
-g\[Mu]\[Nu]=Metric[SubMinus[\[Mu]],SubMinus[\[Nu]],m];
-g\[Mu]\[Nu]T=TensorComponents[g\[Mu]\[Nu]];
-(* Construct Partial Derivative of \[Xi] *)
-pd\[Xi]=TensorComponents[PartialD[SubMinus[\[Mu]],Vec,m]];
-(* Construct Partial Derivative of Subscript[g, \[Mu]\[Nu]] *)
-pdg=TensorComponents[PartialD[SubMinus[\[Alpha]],g\[Mu]\[Nu],m]];
-(* \[Xi]^\[Sigma]\!\(
-\*SubscriptBox[\(\[PartialD]\), \(\[Sigma]\)]
-\*SubscriptBox[\(g\), \(\[Mu]\[Nu]\)]\) *)
-L1=TensorContract[TensorProduct[TensorComponents[Vec],pdg],{{1,2}}];
-(* \!\(
-\*SubscriptBox[\(\[PartialD]\), \({\[Mu]\)]
-\*SuperscriptBox[\(\[Xi]\), \(\[Sigma]\)]\)Subscript[g, \[Nu]}\[Sigma]] *)
-L2=TensorContract[TensorProduct[pd\[Xi],g\[Mu]\[Nu]T],{{2,4}}];
-(* ... remember to symmetrize *)
-L2=Transpose[L2]+L2;
-temp=Tensor[
-TensorType->"LieDerivative",
-TensorName->Row[{"\[Sterling]",Column[{Null,Cases[\[Xi],(TensorName->mmm_):>mmm,\[Infinity]][[1]]}],Cases[m,(TensorName->mmm_):>mmm,\[Infinity]][[1]]}],
-Indices->Indices[g\[Mu]\[Nu]],
-StartIndex->Cases[\[Xi],(StartIndex->mmm_):>mmm,\[Infinity]][[1]],
-CoordinateSystem->Coordinates[\[Xi]],
-TensorComponents->L1+L2];
-MoveIndices[temp,Indices[m],m]
+GeodesicHamiltonianDynamics[m_Tensor,cp_List,a\[Lambda]_Symbol]/;TestMetricTensor[m]&&(* list of Rules relating coords to momenta *)MatchQ[cp[[1]],Repeated[Rule[lhs_,rhs_]]]&&(* lhs of Rules in cp should be the coordinates of m *)(Union[Evaluate[(cp/.Rule[lhs_,rhs_]->lhs)],Coordinates[m]]===Sort[Coordinates[m]])&&(* Affine Parameter should not be coordinate *)(Intersection[Coordinates[m],{a\[Lambda]}]==={}):=Module[
+{mm,ss,\[Sigma],\[Mu],\[Nu],si,cooo,d,cc,coo\[Lambda],p\[Lambda],coot,ct,comehere,H\[Lambda],g\[Mu]\[Nu],Lt,output,coo\[Lambda]Eqn,p\[Lambda]Eqn},
+(* extract affine and non-affine parameter for solving geodesic eqn *)
+cooo=Coordinates[m];
+(* coordinates as a function of affine parameter *)
+coo\[Lambda]=(#/.#->#[a\[Lambda]])&/@cooo;
+(* momentum as a function of affine parameter *)
+p\[Lambda]=(#/.#->#[a\[Lambda]])&/@(cooo/.cp);
+d=Length[cooo];
+(* construct affine parameter Hamiltonian *)
+g\[Mu]\[Nu]=TensorComponents[Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m]]/.Thread[Rule[cooo,coo\[Lambda]]];
+H\[Lambda]=(1/2)Sum[g\[Mu]\[Nu][[\[Mu],\[Nu]]]p\[Lambda][[\[Mu]]]p\[Lambda][[\[Nu]]],{\[Mu],1,d},{\[Nu],1,d}];
+(* Overscript[x, .]^\[Mu] = g^\[Mu]\[Nu]Subscript[p, \[Nu]] *)
+coo\[Lambda]Eqn=(D[coo\[Lambda][[#]],a\[Lambda]]==Sum[g\[Mu]\[Nu][[#,\[Nu]]]p\[Lambda][[\[Nu]]],{\[Nu],1,d}])&/@Range[1,d];
+(* Subscript[Overscript[p, .], \[Mu]] = - \[PartialD]H/\[PartialD]x^\[Mu] = -(1/2)\!\(
+\*SubscriptBox[\(\[PartialD]\), \(\[Mu]\)]
+\*SuperscriptBox[\(g\), \(\[Alpha]\[Beta]\)]\) Subscript[p, \[Alpha]] Subscript[p, \[Beta]] *)
+p\[Lambda]Eqn=(D[p\[Lambda][[#]],a\[Lambda]]==-D[H\[Lambda],coo\[Lambda][[#]]])&/@Range[1,d];
+(* output: Hamiltonian, {xdot eqns, pdot eqns} *)
+{H\[Lambda],Join[coo\[Lambda]Eqn,p\[Lambda]Eqn]}
 ];
 
 
 (* ::Input::Initialization:: *)
-MHDSystem[{ph1_,ph2_,ph3_},rho_Function,gBH_Tensor,OptionsPattern[]]/;CheckMetricTensor[gBH]:=Module[{MHDRules,\[Rho]0,nT,q123,n,\[Alpha]1,\[Alpha]2,\[Alpha]3,\[Zeta],F\[Mu]\[Nu],F\[Mu]\[Nu]T,LHS1,LHS2,RHS1,RHS2,RHS3,\[CapitalPhi]1,\[CapitalPhi]2,\[CapitalPhi]3,x0,x1,x2,x3,si,\[Sigma],\[Rho],\[Alpha],\[Beta],\[Gamma],X,Y,Z,\[Mu],\[Nu],\[Beta]1,\[Gamma]1,q123T,q1,q2,q3,q1T,q2T,q3T,\[Rho]0q123T,\[Rho]0q123,P,PT,divF,divFT,F2,MaxwellT,PlasmaT,coords,Opr,gsgn,TotalT},
+(*SphericalHarmonicYTensor*)
+SphericalHarmonicYTensor[l_,m_,\[Theta]_Symbol,\[Phi]_Symbol,opts:OptionsPattern[]]:=Module[{g,i,j,Y,k,result,tempidx},
+g=Metric[SubMinus[i],SubMinus[j],({
+ {1, 0},
+ {0, Sin[\[Theta]]^2}
+}),Coordinates->{\[Theta],\[Phi]},TensorName->"g",StartIndex->1];
+Y=NonMetricTensor[{},SphericalHarmonicY[l,m,\[Theta],\[Phi]],Row[{"Y",Column[{m,l}]}],Coordinates->{\[Theta],\[Phi]},StartIndex->1,TensorAssumption-> {0<= \[Phi]<=2Pi,0<=\[Theta]<=Pi}];
+Which[OptionValue[TooltipDisplay]=!=Null,Y=TooltipDisplay[Y,OptionValue[TooltipDisplay]]];
+Which[OptionValue[TooltipStyle]=!={},Y=TooltipStyle[Y,OptionValue[TooltipStyle]]];
+Y
+]/;((Element[l,Complexes]===True)||MatchQ[Head[l],(Symbol|Plus|Times)])&&((Element[m,Complexes]===True)||MatchQ[Head[m],(Symbol|Plus|Times)]);
+
+SphericalHarmonicYTensor[l_,m_,g_Tensor/;(TestMetricTensor[g]&&(Dimensions[g]==={2,2})&&ZeroTensorQ[(g-Ricci[SubMinus[Unique[i]],SubMinus[Unique[j]],g])//Simplify]),opts:OptionsPattern[]]:=Module[{coord,i,j,Y,k,result,tempidx,FS,FSlist},
+coord=Coordinates[g];
+Y=NonMetricTensor[{},SphericalHarmonicY[l,m,Sequence@@coord],Row[{"Y",Column[{m,l}]}],Coordinates->coord,StartIndex->1];
+Y=TooltipDisplay[Y,OptionValue[TooltipDisplay]];
+Y=TooltipStyle[Y,OptionValue[TooltipStyle]];
+Y
+]/;((Element[l,Complexes]===True)||MatchQ[Head[l],(Symbol|Plus|Times)])&&((Element[m,Complexes]===True)||MatchQ[Head[m],(Symbol|Plus|Times)]);
+
+
+(* ::Input::Initialization:: *)
+(*VectorSphericalHarmonic*)
+VectorSphericalHarmonic[idx_/;(TestIndices[idx]),l_,m_,\[Theta]_Symbol,\[Phi]_Symbol,VectorType_/;MatchQ[VectorType,("Gradient"|"Curl")],opts:OptionsPattern[]]:=Module[{g,i,j,result,norm,tempidx,FS,FSlist,ltemp,mtemp},
+norm=OptionValue[Normalize];
+FSlist={0<= \[Phi]<=2Pi,0<=\[Theta]<=Pi};
+Which[!IntegerQ[l],AppendTo[FSlist,l\[Element]NonNegativeIntegers]];
+Which[!IntegerQ[m],AppendTo[FSlist,m\[Element]Integers]];
+Which[!(IntegerQ[l]&&IntegerQ[m]),AppendTo[FSlist,-l<=m<=l]];
+(*We find that it took too long time to calculate a good form of VectorSphericalHarmonic.That' s why we want to save the result directly. See Wei-Hao test notebook part 2.*)
+result=Which[(VectorType==="Gradient")&&(Head[idx]===SuperMinus),NonMetricTensor[{SuperMinus[tempidx]},{mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) Sqrt[(ltemp-mtemp) (1+ltemp+mtemp)] SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]],I mtemp Csc[\[Theta]]^2 SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]},Del[Row[{"Y",Column[{mtemp,ltemp}]}]],Coordinates->{\[Theta],\[Phi]},StartIndex->1,TensorAssumption-> FSlist],
+(VectorType==="Curl")&&(Head[idx]===SuperMinus),
+NonMetricTensor[{SuperMinus[tempidx]},{I mtemp Csc[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]],-Csc[\[Theta]] (mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) \[Sqrt]((ltemp-mtemp) (1+ltemp+mtemp)) SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]])},Row[{"\[FivePointedStar]",Row[{"\[DifferentialD]",Row[{"Y",Column[{mtemp,ltemp}]}]}]}],Coordinates->{\[Theta],\[Phi]},StartIndex->1,TensorAssumption-> FSlist],
+(VectorType==="Gradient")&&(Head[idx]===SubMinus),NonMetricTensor[{SubMinus[tempidx]},{mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) Sqrt[(ltemp-mtemp) (1+ltemp+mtemp)] SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]],I mtemp SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]},Del[Row[{"Y",Column[{mtemp,ltemp}]}]],Coordinates->{\[Theta],\[Phi]},StartIndex->1,TensorAssumption->FSlist],
+(VectorType==="Curl")&&(Head[idx]===SubMinus),
+NonMetricTensor[{SubMinus[tempidx]},{I mtemp Csc[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]],-Sin[\[Theta]] (mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) \[Sqrt]((ltemp-mtemp) (1+ltemp+mtemp)) SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]])},Row[{"\[FivePointedStar]",Row[{"\[DifferentialD]",Row[{"Y",Column[{mtemp,ltemp}]}]}]}],Coordinates->{\[Theta],\[Phi]},StartIndex->1,TensorAssumption-> FSlist]];result=((Which[norm===True,(result/.{(TensorComponents-> comp_):> (TensorComponents->1/Sqrt[l (l+1)]  comp)}),True, result]/.{tempidx->idx[[1]] })/.{ltemp-> l,mtemp-> m});
+Which[OptionValue[TooltipDisplay]=!=Null,result=TooltipDisplay[result,OptionValue[TooltipDisplay]]];
+Which[OptionValue[TooltipStyle]=!={},result=TooltipStyle[result,OptionValue[TooltipStyle]]];
+result
+]/;(IntegerQ[l]||MatchQ[Head[l],(Symbol|Plus|Times)])&&(IntegerQ[m]||MatchQ[Head[m],(Symbol|Plus|Times)])&&Which[(IntegerQ[l]&&IntegerQ[m]),(l>=0)&&(-l<=m<=l),True,True];
+
+VectorSphericalHarmonic[idx_/;(TestIndices[idx]),l_,m_,g_Tensor/;(TestMetricTensor[g]&&(Dimensions[g]==={2,2})&&ZeroTensorQ[(g-Ricci[SubMinus[Unique[iiiii]],SubMinus[Unique[jjjjj]],g])//Simplify]),VectorType_/;MatchQ[VectorType,("Gradient"|"Curl")],opts:OptionsPattern[]]:=Module[{coord,result,norm,tempidx,FS,FSlist,\[Theta],\[Phi],ltemp,mtemp},
+norm=OptionValue[Normalize];
+coord=Coordinates[g];
+\[Theta]=coord[[1]];
+\[Phi]=coord[[2]];
+result=Which[(VectorType==="Gradient"),NonMetricTensor[{SuperMinus[tempidx]},{mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) Sqrt[(ltemp-mtemp) (1+ltemp+mtemp)] SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]],I mtemp Csc[\[Theta]]^2 SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]},Del[Row[{"Y",Column[{mtemp,ltemp}]}]],Coordinates->{\[Theta],\[Phi]},StartIndex->1],(VectorType==="Curl"),NonMetricTensor[{SuperMinus[tempidx]},{I mtemp Csc[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]],-Csc[\[Theta]] (mtemp Cot[\[Theta]] SphericalHarmonicY[ltemp,mtemp,\[Theta],\[Phi]]+E^(-I \[Phi]) \[Sqrt]((ltemp-mtemp) (1+ltemp+mtemp)) SphericalHarmonicY[ltemp,1+mtemp,\[Theta],\[Phi]])},Row[{"\[FivePointedStar]","d"[Row[{"Y",Column[{mtemp,ltemp}]}]]}],Coordinates->{\[Theta],\[Phi]},StartIndex->1]];result=((MoveIndices[Which[norm===True,(result/.{(TensorComponents-> comp_):> (TensorComponents->1/Sqrt[l (l+1)]  comp)}),True, result],{tempidx//idx[[0]]},g]/.{tempidx->idx[[1]] })/.{ltemp-> l,mtemp-> m});
+Which[!((!IntegerQ[l])&&(!IntegerQ[m])),FSlist={0<= \[Phi]<=2Pi,0<=\[Theta]<=Pi};
+Which[!IntegerQ[l],AppendTo[FSlist,l\[Element]NonNegativeIntegers]];
+Which[!IntegerQ[m],AppendTo[FSlist,m\[Element]Integers]];
+Which[!(IntegerQ[l]&&IntegerQ[m]),AppendTo[FSlist,-l<=m<=l]];
+FS=FullSimplify[#,Evaluate[FSlist]]&;
+result=result
+];
+Which[OptionValue[TooltipDisplay]=!=Null,result=TooltipDisplay[result,OptionValue[TooltipDisplay]]];
+Which[OptionValue[TooltipStyle]=!={},result=TooltipStyle[result,OptionValue[TooltipStyle]]];
+result
+]/;(IntegerQ[l]||MatchQ[Head[l],(Symbol|Plus|Times)])&&(IntegerQ[m]||MatchQ[Head[m],(Symbol|Plus|Times)])&&Which[(IntegerQ[l]&&IntegerQ[m]),(l>=0)&&(-l<=m<=l),True,True];
+
+
+(* ::Input::Initialization:: *)
+ElectromagneticStressEnergyTensor[\[Mu]T1_/;(*Not allow OverHatIndices for now.*)(TestIndices[\[Mu]T1]&&!TestOverHatIndex[\[Mu]T1]),\[Mu]T2_/;(TestIndices[\[Mu]T2]&&!TestOverHatIndex[\[Mu]T2]),F_Tensor,m_Tensor/;TestMetricTensor[m],opts:OptionsPattern[]]:=Module[{Tup,\[Mu],\[Nu],\[Alpha],\[Beta]},
+Tup=RemoveUnderBarredIndices[TensorsProduct[Which[(OptionValue[MetricSignature]==="MostlyMinus"), -1, (OptionValue[MetricSignature]==="MostlyPlus"), 1] (TensorsProduct[{MoveIndices[F,{SuperMinus[\[Mu]],SuperMinus[\[Alpha]]},m], MoveIndices[F,{SuperMinus[\[Nu]],SubMinus[\[Alpha]]},m]}]-TensorsProduct[{1/4,Metric[SuperMinus[\[Mu]],SuperMinus[\[Nu]],m],MoveIndices[F,{SubMinus[\[Alpha]],SubMinus[\[Beta]]},m], MoveIndices[F,{SuperMinus[\[Alpha]],SuperMinus[\[Beta]]},m]}]),Tensor,TensorName-> "T"]];
+MoveIndices[Tup,{\[Mu]T1,\[Mu]T2},m]
+];
+
+
+(* ::Input::Initialization:: *)
+MHDSystem[{ph1_,ph2_,ph3_},rho_Function,gBH_Tensor,OptionsPattern[]]/;TestMetricTensor[gBH]:=Module[{MHDRules,\[Rho]0,nT,q123,n,\[Alpha]1,\[Alpha]2,\[Alpha]3,\[Zeta],F\[Mu]\[Nu],F\[Mu]\[Nu]T,LHS1,LHS2,RHS1,RHS2,RHS3,\[CapitalPhi]1,\[CapitalPhi]2,\[CapitalPhi]3,x0,x1,x2,x3,si,\[Sigma],\[Rho],\[Alpha],\[Beta],\[Gamma],X,Y,Z,\[Mu],\[Nu],\[Beta]1,\[Gamma]1,q123T,q1,q2,q3,q1T,q2T,q3T,\[Rho]0q123T,\[Rho]0q123,P,PT,divF,divFT,F2,MaxwellT,PlasmaT,coords,Opr,gsgn,TotalT},
 (* metric signature converted to sign of eta_00 *)
 gsgn=Which[
-(OptionValue[MetricSignature]==="Mostly minus"),1,
-(OptionValue[MetricSignature]==="Mostly plus"),-1
+(OptionValue[MetricSignature]==="MostlyMinus"),1,
+(OptionValue[MetricSignature]==="MostlyPlus"),-1
 ];
 (* gradients of X Y Z *)
 coords=Coordinates[UniqueIndices[gBH]];
@@ -1562,14 +4115,15 @@ MHDRules={
 \[Rho]0->rho};
 (* Opr acts on output *)
 Opr=OptionValue[MHDOperator];
-si=Cases[gBH,(StartIndex->xx_):>xx,\[Infinity]][[1]];
+(*NewCode: ExtractFunctions*)
+si=StartIndex[gBH];
 q1T[\[Sigma]_]=Tensor[
 TensorType->"Gradient",
 TensorName ->Del["\!\(\*SubscriptBox[\(\[CapitalPhi]\), \(1\)]\)"],
 Indices->{SubMinus[\[Sigma]]},
 StartIndex->si,
 TensorComponents->((D[\[CapitalPhi]1[Sequence@@coords],#]&/@coords)/.MHDRules),
-CoordinateSystem->coords];
+Coordinates->coords];
 q1[\[Rho]_]:=MoveIndices[q1T[\[Alpha]],{\[Rho]},UniqueIndices[gBH]];
 q2T[\[Sigma]_]=Tensor[
 TensorType->"Gradient",
@@ -1577,7 +4131,7 @@ TensorName ->Del["\!\(\*SubscriptBox[\(\[CapitalPhi]\), \(2\)]\)"],
 Indices->{SubMinus[\[Sigma]]},
 StartIndex->si,
 TensorComponents->((D[\[CapitalPhi]2[Sequence@@coords],#]&/@coords)/.MHDRules),
-CoordinateSystem->coords];
+Coordinates->coords];
 q2[\[Rho]_]:=MoveIndices[q2T[\[Sigma]],{\[Rho]},UniqueIndices[gBH]];
 q3T[\[Sigma]_]=Tensor[
 TensorType->"Gradient",
@@ -1585,7 +4139,7 @@ TensorName ->Del["\!\(\*SubscriptBox[\(\[CapitalPhi]\), \(3\)]\)"],
 Indices->{SubMinus[\[Sigma]]},
 StartIndex->si,
 TensorComponents->((D[\[CapitalPhi]3[Sequence@@coords],#]&/@coords)/.MHDRules),
-CoordinateSystem->coords];
+Coordinates->coords];
 q3[\[Rho]_]:=MoveIndices[q3T[\[Sigma]],{\[Rho]},UniqueIndices[gBH]];
 (* Maxwell tensor and its divergence *)
 F\[Mu]\[Nu]T[\[Sigma]_,\[Rho]_]=Tensor[
@@ -1595,7 +4149,7 @@ StyleBox[\"F\",\nFontSlant->\"Italic\"]\)",
 Indices->{SubMinus[\[Sigma]],SubMinus[\[Rho]]},
 StartIndex->si,
 TensorComponents->Normal[TensorWedge[TensorComponents[q1[SubMinus[\[Alpha]]]],TensorComponents[q2[SubMinus[\[Beta]]]]]],
-CoordinateSystem->coords];
+Coordinates->coords];
 F\[Mu]\[Nu][\[Alpha]_,\[Beta]_]:=MoveIndices[F\[Mu]\[Nu]T[\[Sigma],\[Rho]],{\[Alpha],\[Beta]},UniqueIndices[gBH]];
 (* maxwell stress tensor *)
 F2=TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[\[Alpha]],SubMinus[\[Beta]]]],TensorComponents[F\[Mu]\[Nu][SuperMinus[\[Alpha]],SuperMinus[\[Beta]]]]],{{1,3},{2,4}}];
@@ -1607,7 +4161,7 @@ StyleBox[\"T\",\nFontSlant->\"Italic\"]\)[EM]",
 Indices->{SubMinus[\[Sigma]],SubMinus[\[Rho]]},
 StartIndex->si,
 TensorComponents->F2,
-CoordinateSystem->coords];
+Coordinates->coords];
 (* dX \[Wedge] dY \[Wedge] dZ *)
 q123T[\[Alpha]1_,\[Alpha]2_,\[Alpha]3_]=Tensor[
 TensorType->"3-Form",
@@ -1616,7 +4170,7 @@ StyleBox[\"n\",\nFontSlant->\"Italic\"]\)"],
 Indices->{SubMinus[\[Alpha]1],SubMinus[\[Alpha]2],SubMinus[\[Alpha]3]},
 StartIndex->si,
 TensorComponents->Normal[TensorWedge[TensorComponents[q1[SubMinus[\[Beta]]]],TensorComponents[q2[SubMinus[\[Beta]]]],TensorComponents[q3[SubMinus[\[Beta]]]]]],
-CoordinateSystem->coords];
+Coordinates->coords];
 q123[\[Alpha]_,\[Beta]_,\[Gamma]_]:=Module[{\[Mu]1,\[Mu]2,\[Mu]3},MoveIndices[q123T[\[Mu]1,\[Mu]2,\[Mu]3],{\[Alpha],\[Beta],\[Gamma]},UniqueIndices[gBH]]];
 (* Plasma current *)
 nT[\[Mu]_]=((CovariantHodgeDual[SuperMinus[\[Mu]],q123[SubMinus[\[Alpha]],SubMinus[\[Beta]],SubMinus[\[Gamma]]],UniqueIndices[gBH]]//Opr)/.(TensorName->name_)->(TensorName->"\!\(\*
@@ -1629,8 +4183,8 @@ TensorName ->"\!\(\*
 StyleBox[\"P\",\nFontSlant->\"Italic\"]\)",
 Indices->{SuperMinus[\[Alpha]],SuperMinus[\[Beta]],SuperMinus[\[Gamma]]},
 StartIndex->si,
-TensorComponents->Opr[((gsgn \[Rho]0'[(1/2)gsgn TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]]])/.MHDRules)]TensorComponents[q123[SuperMinus[\[Alpha]1],SuperMinus[\[Beta]1],SuperMinus[\[Gamma]1]]],
-CoordinateSystem->coords];
+TensorComponents->Opr[((gsgn \[Rho]0'[(1/2)gsgn TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]]])/.MHDRules)]TensorComponents[q123[SuperMinus[\[Alpha]1],SuperMinus[\[Beta]1],SuperMinus[\[Gamma]1]]],
+Coordinates->coords];
 \[Rho]0q123[\[Alpha]_,\[Beta]_,\[Gamma]_]:=MoveIndices[\[Rho]0q123T[\[Alpha]1,\[Alpha]2,\[Alpha]3],{\[Alpha],\[Beta],\[Gamma]},UniqueIndices[gBH]];
 PT[\[Beta]_,\[Gamma]_]=Tensor[
 TensorType->"2-Form",
@@ -1639,10 +4193,10 @@ StyleBox[\"P\",\nFontSlant->\"Italic\"]\)",
 Indices->{SuperMinus[\[Beta]],SuperMinus[\[Gamma]]},
 StartIndex->si,
 TensorComponents->TensorComponents[CovariantD[SubMinus[\[Sigma]],\[Rho]0q123[SuperMinus[\[Sigma]],SuperMinus[\[Beta]1],SuperMinus[\[Gamma]1]],UniqueIndices[gBH]]],
-CoordinateSystem->coords];
+Coordinates->coords];
 P[\[Beta]_,\[Gamma]_]:=MoveIndices[Opr[PT[\[Alpha]1,\[Alpha]2]],{\[Beta],\[Gamma]},UniqueIndices[gBH]];
 (* perfect fluid stress tensor of plasma *)
-F2=Opr[TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]]];
+F2=Opr[TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]]];
 F2=(gsgn TensorComponents[Metric[SuperMinus[\[Alpha]],SuperMinus[\[Beta]],UniqueIndices[gBH]]](\[Rho]0[gsgn F2/2]-\[Rho]0'[gsgn F2/2]gsgn F2)+\[Rho]0'[gsgn F2/2]TensorProduct[TensorComponents[n[SuperMinus[\[Mu]]]],TensorComponents[n[SuperMinus[\[Nu]]]]])/.MHDRules;
 PlasmaT[\[Sigma]_,\[Rho]_]=Tensor[
 TensorType->"MHDPlasma",
@@ -1651,7 +4205,7 @@ StyleBox[\"T\",\nFontSlant->\"Italic\"]\)[Plasma]",
 Indices->{SuperMinus[\[Sigma]],SuperMinus[\[Rho]]},
 StartIndex->si,
 TensorComponents->Opr[F2],
-CoordinateSystem->coords];
+Coordinates->coords];
 (* total stress tensor *)
 TotalT[\[Sigma]_,\[Rho]_]=Tensor[
 TensorType->"MHDMaxwellPlasma",
@@ -1661,7 +4215,7 @@ Indices->{SuperMinus[\[Sigma]],SuperMinus[\[Rho]]},
 StartIndex->si,
 (* remember we defined photon T\[Mu]\[Nu] with both lower indices and plasma with both upper *)
 TensorComponents->TensorComponents[RaiseAllIndices[MaxwellT[\[Mu],\[Nu]],UniqueIndices[gBH]]]+TensorComponents[PlasmaT[\[Mu],\[Nu]]],
-CoordinateSystem->coords];
+Coordinates->coords];
 (* EM current *)
 divFT[\[Mu]_]=Tensor[
 TensorType->"MaxwellCurrent",
@@ -1670,19 +4224,19 @@ StyleBox[\"J\",\nFontSlant->\"Italic\"]\)",
 Indices->{SubMinus[\[Mu]]},
 StartIndex->si,
 TensorComponents->(TensorComponents[CovariantD[SuperMinus[\[Sigma]],F\[Mu]\[Nu][SubMinus[\[Sigma]],SubMinus[\[Rho]]],UniqueIndices[gBH]]]//Opr),
-CoordinateSystem->coords];
+Coordinates->coords];
 divF[\[Rho]_]:=MoveIndices[divFT[\[Alpha]],{\[Rho]},UniqueIndices[gBH]];
 (* EOM I : \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Sigma]\)]\[Zeta]\) \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]
 \*SuperscriptBox[\(F\), \(\[Mu]\[Sigma]\)]\) = Subscript[q1, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
-LHS1=((TensorComponents[q1[SubMinus[\[Sigma]]]] . TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr);
+LHS1=((TensorComponents[q1[SubMinus[\[Sigma]]]].TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr);
 RHS1=Opr[TensorContract[TensorProduct[TensorComponents[q1[SubMinus[\[Sigma]]]],TensorComponents[q3[SubMinus[\[Sigma]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
 (* EOM II : \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Sigma]\)]Y\) \!\(
 \*SubscriptBox[\(\[Del]\), \(\[Mu]\)]
 \*SuperscriptBox[\(F\), \(\[Mu]\[Sigma]\)]\) = Subscript[q2, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
-LHS2=(TensorComponents[q2[SubMinus[\[Sigma]]]] . TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr;
+LHS2=(TensorComponents[q2[SubMinus[\[Sigma]]]].TensorComponents[divF[SuperMinus[\[Rho]]]])//Opr;
 RHS2=Opr[TensorContract[TensorProduct[TensorComponents[q2[SubMinus[\[Sigma]]]],TensorComponents[q3[SubMinus[\[Sigma]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
 (* EOM III : 0 = Subscript[q2, \[Alpha]] Subscript[q3, \[Beta]] P^\[Alpha]\[Beta] *)
 RHS3=Opr[TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[\[Sigma]],SubMinus[\[Rho]]]],TensorComponents[P[SuperMinus[\[Sigma]],SuperMinus[\[Rho]]]]],{{1,3},{2,4}}]];
@@ -1707,12 +4261,12 @@ MHDPlasmaStressTensor->(PlasmaT[Unique[\[Sigma]],Unique[\[Rho]]]),
 MHDTotalStressTensor->TotalT[Unique[\[Sigma]],Unique[\[Rho]]],
 MHDPlasmaEnergyDensityOperator->rho,
 (* MHD Lagrangian -\[Rho]0-(1/4)F^2 *)
-MHDLagrangianDensity->-(\[Rho]0[(1/2)gsgn (TensorComponents[n[SubMinus[\[Sigma]]]] . TensorComponents[n[SuperMinus[\[Sigma]]]])//Opr]/.MHDRules)-(1/4)TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[Unique[\[Sigma]]],SubMinus[Unique[\[Rho]]]]],TensorComponents[F\[Mu]\[Nu][SuperMinus[Unique[\[Sigma]]],SuperMinus[Unique[\[Rho]]]]]],{{1,3},{2,4}}],
+MHDLagrangianDensity->-(\[Rho]0[(1/2)gsgn (TensorComponents[n[SubMinus[\[Sigma]]]].TensorComponents[n[SuperMinus[\[Sigma]]]])//Opr]/.MHDRules)-(1/4)TensorContract[TensorProduct[TensorComponents[F\[Mu]\[Nu][SubMinus[Unique[\[Sigma]]],SubMinus[Unique[\[Rho]]]]],TensorComponents[F\[Mu]\[Nu][SuperMinus[Unique[\[Sigma]]],SuperMinus[Unique[\[Rho]]]]]],{{1,3},{2,4}}],
 (* store metric info too *)
 MHDMetricTensor->UniqueIndices[gBH],
-CoordinateSystem->Coordinates[UniqueIndices[gBH]],
+Coordinates->Coordinates[UniqueIndices[gBH]],
 MetricSignature->OptionValue[MetricSignature]
-]]/;((OptionValue[MetricSignature]==="Mostly minus")||(OptionValue[MetricSignature]==="Mostly plus"));
+]]/;((OptionValue[MetricSignature]==="MostlyMinus")||(OptionValue[MetricSignature]==="MostlyPlus"));
 
 
 (* ::Input::Initialization:: *)
@@ -1727,7 +4281,7 @@ MHDPlasmaEnergyDensityOperator->rho_,
 MHDMetricTensor->ggg_
 ]]:=Module[{sg},
 (* metric signature *)
-sg=Which[ss==="Mostly minus","+",ss==="Mostly plus","-"];
+sg=Which[ss==="MostlyMinus","+",ss==="MostlyPlus","-"];
 MHDSystem[MatrixForm[
 {(* {ph1,ph2,ph3,"n^\[Mu]"\[Rule]TensorComponents[nnnT]},
 {"Subscript[F, \[Mu]\[Nu]]"\[Rule]MatrixForm[TensorComponents[F\[Mu]\[Nu]TT]],"J^\[Mu]"\[Rule]TensorComponents[MaxJTT]},
@@ -1785,29 +4339,29 @@ MHDScalar[1,mm_MHDSystem]:=Module[{xx},Cases[mm,(MHDScalarFunction1->xx_):>xx,\[
 MHDScalar[2,mm_MHDSystem]:=Module[{xx},Cases[mm,(MHDScalarFunction2->xx_):>xx,\[Infinity]][[1]]];
 MHDScalar[3,mm_MHDSystem]:=Module[{xx},Cases[mm,(MHDScalarFunction3->xx_):>xx,\[Infinity]][[1]]];
 (* 1-forms/vectors *)
-MHDScalar[\[Mu]T_/;CheckIndex[\[Mu]T],1,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor1->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
-MHDScalar[\[Mu]T_/;CheckIndex[\[Mu]T],2,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor2->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
-MHDScalar[\[Mu]T_/;CheckIndex[\[Mu]T],3,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor3->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDScalar[\[Mu]T_/;TestIndices[\[Mu]T],1,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor1->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDScalar[\[Mu]T_/;TestIndices[\[Mu]T],2,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor2->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDScalar[\[Mu]T_/;TestIndices[\[Mu]T],3,mm_MHDSystem]:=Module[{\[Alpha],xx},MoveIndices[Cases[mm,(MHD1FormTensor3->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
-MHD3Form[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],\[Gamma]T_/;CheckIndex[\[Gamma]T],mm_MHDSystem]:=Module[{\[Alpha],\[Beta],xx},MoveIndices[Cases[mm,(MHD3FormTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T,\[Gamma]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHD3Form[\[Mu]T_/;TestIndices[\[Mu]T],\[Nu]T_/;TestIndices[\[Nu]T],\[Gamma]T_/;TestIndices[\[Gamma]T],mm_MHDSystem]:=Module[{\[Alpha],\[Beta],xx},MoveIndices[Cases[mm,(MHD3FormTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T,\[Gamma]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
-MHDPlasmaCurrent[\[Mu]T_/;CheckIndex[\[Mu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDPlasmaCurrentTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDPlasmaCurrent[\[Mu]T_/;TestIndices[\[Mu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDPlasmaCurrentTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
-MHDMaxwell[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDMaxwellTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDMaxwell[\[Mu]T_/;TestIndices[\[Mu]T],\[Nu]T_/;TestIndices[\[Nu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDMaxwellTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
-MHDMaxwellCurrent[\[Mu]T_/;CheckIndex[\[Mu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDMaxwellCurrentTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDMaxwellCurrent[\[Mu]T_/;TestIndices[\[Mu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDMaxwellCurrentTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
-MHDRank2P[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDRank2PTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDRank2P[\[Mu]T_/;TestIndices[\[Mu]T],\[Nu]T_/;TestIndices[\[Nu]T],mm_MHDSystem]:=Module[{xx},MoveIndices[Cases[mm,(MHDRank2PTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
@@ -1816,7 +4370,7 @@ MHDEquations[mm_MHDSystem]:=Module[{xx},(Equal@@#)&/@Cases[mm,(MHDEquationsList-
 
 
 (* ::Input::Initialization:: *)
-MHDEnergyMomentumShearStress[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],ss_String,mm_MHDSystem]/;((ss==="Maxwell")||(ss==="Photons")||(ss==="EM")||(ss==="Electromagnetic")||(ss==="Plasma")||(ss==="Total")):=Module[{xx},
+MHDEnergyMomentumShearStress[\[Mu]T_/;TestIndices[\[Mu]T],\[Nu]T_/;TestIndices[\[Nu]T],ss_String,mm_MHDSystem]/;((ss==="Maxwell")||(ss==="Photons")||(ss==="EM")||(ss==="Electromagnetic")||(ss==="Plasma")||(ss==="Total")):=Module[{xx},
 Which[
 (ss==="Maxwell")||(ss==="Photons")||(ss==="EM")||(ss==="Electromagnetic"),
 		MoveIndices[Cases[mm,(MHDMaxwellStressTensor->xx_):>xx,\[Infinity]][[1]],{\[Mu]T,\[Nu]T},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]],
@@ -1834,7 +4388,7 @@ MHDPlasmaEnergyDensity[mm_MHDSystem]:=Module[{xx},Cases[mm,(MHDPlasmaEnergyDensi
 
 (* ::Input::Initialization:: *)
 (* extract metric from MHDSystem *)
-MHDMetric[\[Mu]T_/;CheckIndex[\[Mu]T],\[Nu]T_/;CheckIndex[\[Nu]T],mm_MHDSystem]:=Metric[\[Mu]T,\[Nu]T,Module[{xx},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
+MHDMetric[\[Mu]T_/;TestIndices[\[Mu]T],\[Nu]T_/;TestIndices[\[Nu]T],mm_MHDSystem]:=Metric[\[Mu]T,\[Nu]T,Module[{xx},Cases[mm,(MHDMetricTensor->xx_):>xx,\[Infinity]][[1]]]];
 
 
 (* ::Input::Initialization:: *)
@@ -1844,7 +4398,7 @@ MHDLagrangian[mm_MHDSystem]:=Module[{xx},Cases[mm,(MHDLagrangianDensity->xx_):>x
 
 (* ::Input::Initialization:: *)
 (* Protect these symbols so they cannot be altered *)
-Protect[Del,SubMinus,SuperMinus,Tensor,TensorType,TensorName,Indices,Metric,Riemann,Weyl,Ricci,RicciScalar,Einstein,CoordinateSystem,Coordinates,TensorComponents,RiemannComponents,RicciComponents,Christoffel,RicciScalarInvariant,ChristoffelComponents,StartIndex,Determinant,MetricDeterminant,TooltipDisplay,ChristoffelOperator,RiemannOperator,RicciOperator,RicciScalarOperator,EinsteinOperator,WeylOperator,CovariantBox,CoordinateTransformation,GradientSquared,ContractTensors,CovariantD,PartialD,SwapIndices,UnderBar,TensorIsZero,NonMetricTensor,MoveIndices,LeviCivita,RaiseAllIndices,LowerAllIndices,UniqueIndices,CovariantHodgeDual,GeodesicSystem,GeodesicLagrangians,AffineParameter,NonAffineParameter,ToTensor,LieDerivative,MHDSystem,MHDScalarFunction1,MHDScalarFunction2,MHDScalarFunction3,MHD1FormTensor1,MHD1FormTensor2,MHD1FormTensor3,MHD3Form,MHDMaxwellTensor,MHDPlasmaCurrentTensor,MHDRank2PTensor,MHDMaxwellCurrent,MHDEquations,MHDEquationsList,MHDMetricTensor,MHDScalar,MHD3Form,MHDPlasmaCurrent,MHDMaxwell,MHDMaxwellCurrent,MHDMaxwellStressTensor,MHDPlasmaStressTensor,MHDRank2P,MHDEnergyMomentumShearStress,MHDMetric,MHDOperator,MetricSignature,MHDTotalStressTensor,MHDLagrangian,MHDLagrangianDensity,MHDPlasmaEnergyDensityOperator,MHDPlasmaEnergyDensity];
+Protect[Del,SubMinus,SuperMinus,Tensor,TensorType,TensorName,Indices,Metric,Riemann,Weyl,Ricci,RicciScalar,Einstein,Coordinates,Coordinates,TensorComponents,RiemannComponents,RicciComponents,Christoffel,RicciScalarInvariant,ChristoffelComponents,StartIndex,Determinant,MetricDeterminant,TooltipDisplay,ChristoffelOperator,RiemannOperator,RicciOperator,RicciScalarOperator,EinsteinOperator,WeylOperator,CovariantBox,CoordinateTransformation,GradientSquared,CovariantD,PartialD,SwapIndices,UnderBar,ZeroTensorQ,NonMetricTensor,MoveIndices,LeviCivita,RaiseAllIndices,LowerAllIndices,UniqueIndices,CovariantHodgeDual,GeodesicSystem,GeodesicLagrangians,GeodesicHamiltonianDynamics,AffineParameter,NonAffineParameter,LieD,MHDSystem,MHDScalarFunction1,MHDScalarFunction2,MHDScalarFunction3,MHD1FormTensor1,MHD1FormTensor2,MHD1FormTensor3,MHD3Form,MHDMaxwellTensor,MHDPlasmaCurrentTensor,MHDRank2PTensor,MHDMaxwellCurrent,MHDEquations,MHDEquationsList,MHDMetricTensor,MHDScalar,MHD3Form,MHDPlasmaCurrent,MHDMaxwell,MHDMaxwellCurrent,MHDMaxwellStressTensor,MHDPlasmaStressTensor,MHDRank2P,MHDEnergyMomentumShearStress,MHDMetric,MHDOperator,MetricSignature,MHDTotalStressTensor,MHDLagrangian,MHDLagrangianDensity,MHDPlasmaEnergyDensityOperator,MHDPlasmaEnergyDensity,CoordinateTransformationOperator,SymmetrizeIndices,AntiSymmetrizeIndices,SymmetrizeIndicesOperator,AntiSymmetrizeIndicesOperator,ExteriorD,MetricOperator,LieDerivativeOperator,TensorEquations,OrthonormalFrameField,OrthonormalFrameFieldOperator,InverseOrthonormalFrameField,FlatMetric,OrthonormalFrameFieldQ,OrthonormalFrameFieldIndices,OrthonormalBasis,CoordinateBasis,LieBracket,LieBracketOperator,PotentialForm,ExpressionForm,OperatorProductRule,VectorSphericalHarmonic,SphericalHarmonicYTensor,TensorAssumption,ZeroTensorQOperator,TensorOperator,TensorDivision,TensorDivisionOperator,TensorComponentsManipulation,InteriorProduct,\[Iota],\[Sterling],WedgeExpand,ToTensorComponents,LT,TensorsProduct,ContractTensors,OperatorNullList,OperatorDistributeOverPlus,OperatorExpansion,OperatorFactorOutScalar,OperatorRemoveSingleComponentList,OperatorThreadThroughFunction,OperatorTensorReturnItself,OperatorExpressionFormReturnItself,OperatorTensorsProduct,OperatorContractThroughFunction,OutputBecomesOneTensor,OperatorThreadThroughTimes,FullyAntiSymmetricTensorQ,ExtractFunction,EndowFunction,OperatorDistribute,StartingPoint,IntegrationVariable];
 
 
 (* ::Input::Initialization:: *)
